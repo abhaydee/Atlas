@@ -213,9 +213,20 @@ export function ProgressTimeline({
 
       {/* Payment log */}
       {job.paymentLog && (
-        <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 8 }}>
-            x402 Payment Log
+        <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 16 }}>💳</span>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              x402 Payment Log
+            </div>
+            <span style={{
+              marginLeft: "auto", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20,
+              background: job.paymentLog.status === "success" ? "var(--green-light)" : "var(--red-light)",
+              color:      job.paymentLog.status === "success" ? "var(--green)"       : "var(--red)",
+              border:     `1px solid ${job.paymentLog.status === "success" ? "var(--green)" : "var(--red)"}`,
+            }}>
+              {job.paymentLog.status.toUpperCase()}
+            </span>
           </div>
           <PaymentLogRow label="Agent Wallet" value={`${job.paymentLog.agentAddress.slice(0, 10)}…${job.paymentLog.agentAddress.slice(-8)}`} mono />
           <PaymentLogRow label="Amount"       value={job.paymentLog.amountHuman} highlight />
@@ -236,8 +247,19 @@ export function ProgressTimeline({
 
       {/* Error */}
       {job.status === "failed" && job.error && (
-        <div style={{ marginTop: 12, background: "#2a0f0f", border: "1px solid var(--red)", borderRadius: 4, padding: "8px 12px", fontSize: 12, color: "var(--red)" }}>
-          {job.error}
+        <div style={{ marginTop: 12, background: "var(--red-light)", border: "1px solid var(--red)", borderRadius: "var(--radius)", padding: "10px 14px", fontSize: 12, color: "var(--red)", lineHeight: 1.5 }}>
+          <strong>⚠ {job.error}</strong>
+          {(job.error.includes("insufficient") || job.error.includes("balance")) && (
+            <div style={{ marginTop: 5, fontSize: 11 }}>
+              Action: Top up the agent wallet with testnet USDT at{" "}
+              <a href="https://faucet.gokite.ai" target="_blank" rel="noreferrer" style={{ color: "var(--red)", fontWeight: 700 }}>faucet.gokite.ai</a>
+            </div>
+          )}
+          {job.error.includes("cap") && (
+            <div style={{ marginTop: 5, fontSize: 11 }}>
+              Action: Daily spending cap reached — wait for UTC midnight reset or increase AGENT_DAILY_CAP in .env
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -273,7 +295,8 @@ function PaymentLogRow({
 const card: React.CSSProperties = {
   background:   "var(--surface)",
   border:       "1px solid var(--border)",
-  borderRadius: "var(--radius)",
-  padding:      "16px 18px",
+  borderRadius: "var(--radius-lg)",
+  padding:      "18px 22px",
   marginBottom: 16,
+  boxShadow:    "var(--shadow-sm)",
 };

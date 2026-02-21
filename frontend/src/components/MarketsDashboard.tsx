@@ -27,6 +27,7 @@ export interface MarketSummary {
     amountHuman:  string;
     txHash?:      string;
     status:       string;
+    action?:      string;
   };
 }
 
@@ -34,6 +35,22 @@ interface LiveData {
   oraclePrice: string;
   tvl:         string;
   totalSupply: string;
+}
+
+// Asset icon map (emoji fallback by keyword)
+function assetIcon(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes("gold")    || n.includes("xau")) return "🥇";
+  if (n.includes("silver")  || n.includes("xag")) return "🥈";
+  if (n.includes("bitcoin") || n.includes("btc")) return "₿";
+  if (n.includes("eth"))                          return "⟠";
+  if (n.includes("oil")  || n.includes("crude"))  return "🛢";
+  if (n.includes("gas"))                          return "⛽";
+  if (n.includes("apple")  || n.includes("aapl")) return "🍎";
+  if (n.includes("tsla") || n.includes("tesla"))  return "⚡";
+  if (n.includes("copper"))                        return "🔶";
+  if (n.includes("ruby"))                          return "💎";
+  return "◈";
 }
 
 function MarketCard({
@@ -45,8 +62,9 @@ function MarketCard({
   backendUrl: string;
   onSelect:   (m: MarketSummary) => void;
 }) {
-  const [live, setLive] = useState<LiveData | null>(null);
+  const [live,    setLive]    = useState<LiveData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hovered, setHovered] = useState(false);
 
   const fetchLive = useCallback(async () => {
     try {
@@ -64,76 +82,116 @@ function MarketCard({
     return () => clearInterval(id);
   }, [fetchLive]);
 
-  const price      = live?.oraclePrice ?? "—";
-  const tvl        = live?.tvl        ?? "—";
-  const supply     = live?.totalSupply ?? "—";
-  const hasPool    = Boolean(market.contracts.synthPool);
-  const age        = formatAge(market.createdAt);
+  const price   = live?.oraclePrice ?? "—";
+  const tvl     = live?.tvl         ?? "—";
+  const supply  = live?.totalSupply ?? "—";
+  const hasPool = Boolean(market.contracts.synthPool);
+  const age     = formatAge(market.createdAt);
+  const icon    = assetIcon(market.assetName);
 
   return (
-    <div style={cardStyle} onClick={() => onSelect(market)}>
+    <div
+      style={{
+        ...cardStyle,
+        borderColor: hovered ? "var(--border-hover)" : "var(--border)",
+        boxShadow:   hovered ? "var(--shadow-md)" : "var(--shadow-sm)",
+        transform:   hovered ? "translateY(-2px)" : "none",
+      }}
+      onClick={() => onSelect(market)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>{market.assetName}</div>
-          <div style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>{market.assetSymbol}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={iconCircle}>{icon}</div>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.3px" }}>
+              {market.assetName}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--accent)", fontWeight: 700, marginTop: 1 }}>
+              [ {market.assetSymbol} ]
+            </div>
+          </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-          {hasPool && <span style={poolBadge}>AMM Pool</span>}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5 }}>
+          {hasPool && (
+            <span style={ammBadge}>AMM Pool</span>
+          )}
           <span style={{ fontSize: 11, color: "var(--muted)" }}>{age}</span>
         </div>
       </div>
 
       {/* Price */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 2 }}>Oracle Price</div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: loading ? "var(--muted)" : "var(--green)" }}>
-          {loading ? "Loading…" : `$${parseFloat(price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`}
+      <div style={priceBox}>
+        <div style={{ fontSize: 10, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 4 }}>
+          Oracle Price
         </div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: loading ? "var(--muted)" : "var(--text)", letterSpacing: "-0.5px" }}>
+          {loading ? (
+            <span style={{ fontSize: 14, fontWeight: 400 }}>Fetching…</span>
+          ) : (
+            `$${parseFloat(price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`
+          )}
+        </div>
+        <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>via Pyth Network</div>
       </div>
 
-      {/* Stats row */}
-      <div style={{ display: "flex", gap: 16, marginBottom: 14 }}>
-        <Stat label="Vault TVL"    value={loading ? "—" : `$${parseFloat(tvl).toFixed(2)}`} />
-        <Stat label="Total Supply" value={loading ? "—" : `${parseFloat(supply).toFixed(4)} ${market.assetSymbol}`} />
+      {/* Stats */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
+        <StatCell label="Vault TVL"    value={loading ? "—" : `$${parseFloat(tvl).toFixed(2)}`} />
+        <StatCell label="Total Supply" value={loading ? "—" : `${parseFloat(supply).toFixed(4)}`} sub={market.assetSymbol} />
       </div>
 
-      {/* Contracts */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+      {/* Contract chips */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
         <ContractChip label="Vault"  addr={market.contracts.syntheticVault} />
         <ContractChip label="Token"  addr={market.contracts.syntheticToken} />
         <ContractChip label="Oracle" addr={market.contracts.oracleAggregator} />
         {hasPool && <ContractChip label="Pool" addr={market.contracts.synthPool} />}
       </div>
 
-      {/* Payment proof */}
+      {/* x402 Payment proof */}
       {market.paymentLog?.txHash && (
-        <div style={{ fontSize: 11, color: "var(--muted)", borderTop: "1px solid var(--border)", paddingTop: 8 }}>
-          x402 settlement:{" "}
+        <div style={paymentProofRow}>
+          <span style={{ fontSize: 12 }}>💳</span>
+          <span style={{ fontSize: 11, color: "var(--muted)" }}>
+            x402 {market.paymentLog.action ?? "market.create"}:
+          </span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--green)" }}>
+            {market.paymentLog.amountHuman}
+          </span>
           <a
             href={`${KITE_EXPLORER}/tx/${market.paymentLog.txHash}`}
             target="_blank" rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
-            style={{ color: "var(--accent)", textDecoration: "none", fontFamily: "monospace" }}
+            style={{ fontSize: 11, color: "var(--accent)", textDecoration: "none", fontFamily: "monospace", marginLeft: "auto" }}
           >
-            {market.paymentLog.txHash.slice(0, 12)}… ↗
+            {market.paymentLog.txHash.slice(0, 10)}… ↗
           </a>
         </div>
       )}
 
       {/* CTA */}
       <div style={ctaRow}>
-        <span style={ctaBtn}>Trade {market.assetSymbol} →</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--cta)" }}>
+          Trade {market.assetSymbol} →
+        </span>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function StatCell({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div>
-      <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 1 }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{value}</div>
+    <div style={statCell}>
+      <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 3 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
+        {value}
+        {sub && <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 500, marginLeft: 3 }}>{sub}</span>}
+      </div>
     </div>
   );
 }
@@ -180,36 +238,48 @@ export function MarketsDashboard({
   }, [fetchMarkets]);
 
   if (loading) {
-    return <div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>Loading markets…</div>;
+    return (
+      <div style={{ textAlign: "center", padding: "80px 20px", color: "var(--muted)" }}>
+        <div style={{ animation: "spin 1s linear infinite", display: "inline-block", fontSize: 24, marginBottom: 12 }}>↻</div>
+        <div style={{ fontSize: 14, fontWeight: 500 }}>Loading markets…</div>
+      </div>
+    );
   }
 
   return (
     <div>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
-            Live Markets
-            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 600, padding: "2px 8px", background: "rgba(108,99,255,0.15)", color: "var(--accent)", borderRadius: 12 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.4px" }}>
+            Live{" "}
+            <span style={{ color: "var(--accent)" }}>[</span>
+            {" "}Markets{" "}
+            <span style={{ color: "var(--accent)" }}>]</span>
+            <span style={{
+              marginLeft: 10, fontSize: 12, fontWeight: 600, padding: "2px 10px",
+              background: "var(--accent-light)", color: "var(--accent)",
+              borderRadius: 20, border: "1px solid var(--accent)",
+            }}>
               {markets.length}
             </span>
           </div>
-          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-            Click a market to trade · All deployed on Kite Testnet
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, fontWeight: 500 }}>
+            Click any market to trade · Powered by Pyth oracles · All contracts on Kite Testnet
           </div>
         </div>
         <button onClick={onCreateNew} style={createBtn}>
-          + Create New Market
+          + Create Market
         </button>
       </div>
 
       {/* Grid */}
       {markets.length === 0 ? (
         <div style={emptyState}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>No markets yet</div>
-          <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
-            Deploy the first synthetic market — the agent handles everything autonomously.
+          <div style={{ fontSize: 48, marginBottom: 16 }}>◈</div>
+          <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 8, color: "var(--text)" }}>No markets yet</div>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 24, maxWidth: 360, margin: "0 auto 24px" }}>
+            Deploy the first synthetic market — the AI agent handles research, x402 payment, and contract deployment autonomously.
           </div>
           <button onClick={onCreateNew} style={createBtn}>
             Create First Market
@@ -243,67 +313,101 @@ function formatAge(iso: string): string {
 
 const grid: React.CSSProperties = {
   display:             "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-  gap:                 16,
+  gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))",
+  gap:                 20,
 };
 
 const cardStyle: React.CSSProperties = {
   background:   "var(--surface)",
   border:       "1px solid var(--border)",
-  borderRadius: "var(--radius)",
-  padding:      "18px 20px",
+  borderRadius: "var(--radius-lg)",
+  padding:      "20px 22px",
   cursor:       "pointer",
-  transition:   "border-color 0.15s, transform 0.1s",
+  transition:   "border-color 0.18s, box-shadow 0.18s, transform 0.12s",
+};
+
+const iconCircle: React.CSSProperties = {
+  width:          44,
+  height:         44,
+  borderRadius:   "50%",
+  background:     "var(--surface-2)",
+  border:         "1px solid var(--border)",
+  display:        "flex",
+  alignItems:     "center",
+  justifyContent: "center",
+  fontSize:       22,
+  flexShrink:     0,
+};
+
+const priceBox: React.CSSProperties = {
+  background:   "var(--surface-2)",
+  border:       "1px solid var(--border)",
+  borderRadius: "var(--radius)",
+  padding:      "12px 14px",
+  marginBottom: 14,
+};
+
+const statCell: React.CSSProperties = {
+  flex:         1,
+  background:   "var(--surface-2)",
+  border:       "1px solid var(--border)",
+  borderRadius: "var(--radius)",
+  padding:      "10px 12px",
+};
+
+const ammBadge: React.CSSProperties = {
+  fontSize:     10,
+  fontWeight:   700,
+  padding:      "2px 8px",
+  background:   "var(--green-light)",
+  color:        "var(--green)",
+  borderRadius: 20,
+  border:       "1px solid rgba(42,125,82,0.25)",
+};
+
+const paymentProofRow: React.CSSProperties = {
+  display:      "flex",
+  alignItems:   "center",
+  gap:          6,
+  borderTop:    "1px solid var(--border)",
+  paddingTop:   10,
+  marginBottom: 10,
 };
 
 const ctaRow: React.CSSProperties = {
-  marginTop:   12,
-  borderTop:   "1px solid var(--border)",
-  paddingTop:  10,
-  textAlign:   "right",
-};
-
-const ctaBtn: React.CSSProperties = {
-  fontSize:   13,
-  fontWeight: 700,
-  color:      "var(--accent)",
+  borderTop:  "1px solid var(--border)",
+  paddingTop: 12,
+  textAlign:  "right",
 };
 
 const createBtn: React.CSSProperties = {
-  background:   "var(--accent)",
-  color:        "#fff",
+  background:   "var(--cta)",
+  color:        "#FFFFFF",
   border:       "none",
   borderRadius: "var(--radius)",
-  padding:      "9px 18px",
-  fontSize:     14,
+  padding:      "10px 20px",
+  fontSize:     13,
   fontWeight:   700,
   cursor:       "pointer",
+  letterSpacing: "-0.1px",
 };
 
 const emptyState: React.CSSProperties = {
   textAlign:    "center",
-  padding:      "60px 20px",
+  padding:      "80px 20px",
   background:   "var(--surface)",
-  border:       "1px dashed var(--border)",
-  borderRadius: "var(--radius)",
-};
-
-const poolBadge: React.CSSProperties = {
-  fontSize:   10,
-  fontWeight: 700,
-  padding:    "2px 7px",
-  background: "rgba(52,199,89,0.15)",
-  color:      "var(--green)",
-  borderRadius: 10,
+  border:       "2px dashed var(--border)",
+  borderRadius: "var(--radius-lg)",
 };
 
 const chipStyle: React.CSSProperties = {
-  fontSize:     10,
-  fontFamily:   "monospace",
-  padding:      "2px 7px",
-  background:   "var(--bg)",
-  color:        "var(--muted)",
-  borderRadius: 4,
-  border:       "1px solid var(--border)",
+  fontSize:       10,
+  fontFamily:     "monospace",
+  padding:        "3px 8px",
+  background:     "var(--surface-2)",
+  color:          "var(--muted)",
+  borderRadius:   6,
+  border:         "1px solid var(--border)",
   textDecoration: "none",
+  fontWeight:     500,
 };

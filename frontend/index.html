@@ -3,25 +3,116 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Oracle Synthetic Protocol</title>
+    <title>Kite [ Synthetic Markets ]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
       *, *::before, *::after { box-sizing: border-box; }
+
       :root {
-        --bg:       #0d0d14;
-        --surface:  #16162a;
-        --border:   #2a2a45;
-        --accent:   #6c63ff;
-        --green:    #22c55e;
-        --red:      #ef4444;
-        --text:     #e2e2f0;
-        --muted:    #8888aa;
-        --radius:   8px;
-        font-family: 'Segoe UI', system-ui, sans-serif;
+        /* Kite Brand Palette */
+        --bg:           #F5F2EA;
+        --surface:      #FFFFFF;
+        --surface-2:    #F0EDE5;
+        --border:       #E0D9CE;
+        --border-hover: #C8BFB0;
+
+        /* Accent – gold/amber (bracket highlights) */
+        --accent:       #C8963A;
+        --accent-light: rgba(200,150,58,0.12);
+        --accent-dark:  #A57828;
+
+        /* CTA – near black (primary buttons) */
+        --cta:          #1C1C1E;
+        --cta-hover:    #333333;
+
+        /* Semantic */
+        --green:        #2A7D52;
+        --green-light:  rgba(42,125,82,0.1);
+        --red:          #B83232;
+        --red-light:    rgba(184,50,50,0.1);
+        --blue:         #2563EB;
+
+        /* Typography */
+        --text:         #1C1C1E;
+        --text-2:       #3A3830;
+        --muted:        #78736A;
+        --muted-2:      #A09890;
+
+        /* Layout */
+        --radius:       10px;
+        --radius-lg:    14px;
+        --shadow-sm:    0 1px 3px rgba(28,24,20,0.08), 0 1px 2px rgba(28,24,20,0.04);
+        --shadow-md:    0 4px 12px rgba(28,24,20,0.10), 0 2px 4px rgba(28,24,20,0.06);
+
+        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        font-size: 14px;
+        -webkit-font-smoothing: antialiased;
       }
-      body { margin: 0; background: var(--bg); color: var(--text); }
-      #root { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      #root {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 0 20px 48px;
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: var(--bg); }
+      ::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
+
+      /* Selection */
+      ::selection { background: var(--accent-light); color: var(--text); }
+
+      /* Animations */
       @keyframes spin  { to { transform: rotate(360deg); } }
-      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+      @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes shimmer {
+        0%   { background-position: -200% center; }
+        100% { background-position:  200% center; }
+      }
+
+      /* Card hover */
+      .kite-card-hover {
+        transition: box-shadow 0.18s, border-color 0.18s, transform 0.12s;
+      }
+      .kite-card-hover:hover {
+        box-shadow: var(--shadow-md);
+        border-color: var(--border-hover);
+        transform: translateY(-1px);
+      }
+
+      /* Input base */
+      input, textarea, select {
+        font-family: inherit;
+        font-size: 14px;
+        color: var(--text);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+      input:focus, textarea:focus, select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-light);
+      }
+      input::placeholder { color: var(--muted-2); }
+
+      /* Button base */
+      button { font-family: inherit; cursor: pointer; }
+
+      /* Monospace */
+      .mono { font-family: 'SF Mono', 'Fira Code', 'Fira Mono', monospace; }
     </style>
   </head>
   <body>
