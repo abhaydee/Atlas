@@ -42,6 +42,7 @@ interface Props {
   usdcBalance:   string;
   synthBalance:  string;
   onSuccess:     () => void;
+  onOperationRecord?: (op: { txHash: string; operationType: string; amount: string; symbol: string }) => void;
 }
 
 // ── Intent parser ─────────────────────────────────────────────────────────────
@@ -82,7 +83,7 @@ function buildReply(a: ParsedAction, symbol: string, oraclePrice: string): strin
     case "sell":
       return `I'll sell **${a.amount} ${symbol}** back to the AMM pool for USDC.\n\nConfirm?`;
     case "add-liquidity":
-      return `I'll add **${a.amount} USDC** + proportional ${symbol} to the AMM pool.\nYou'll earn **1% of every swap** on your share.\n\nConfirm?`;
+      return `I'll add **${a.amount} USDC** + proportional ${symbol} to the AMM pool.\nYou'll earn **0.5% of every swap** as LP (0.5% to vault).\n\nConfirm?`;
     case "remove-liquidity":
       return `I'll burn **${a.amount} LP tokens** and return your USDC + ${symbol}.\n\nConfirm?`;
   }
@@ -119,7 +120,7 @@ const nextId = () => _id++;
 
 export function ChatBot({
   signer, vaultAddress, usdcAddress, synthAddress, poolAddress,
-  assetSymbol, oraclePrice, usdcBalance, synthBalance, onSuccess,
+  assetSymbol, oraclePrice, usdcBalance, synthBalance, onSuccess, onOperationRecord,
 }: Props) {
   const [open,    setOpen]    = useState(false);
   const [input,   setInput]   = useState("");
@@ -278,6 +279,10 @@ export function ChatBot({
 
       addBot("✅ Done!", { txHash });
       onSuccess();
+      if (txHash) {
+        const symbol = action.type === "mint" || action.type === "buy" || action.type === "add-liquidity" ? "USDC" : action.type === "remove-liquidity" ? "LP" : assetSymbol;
+        onOperationRecord?.({ txHash, operationType: action.type, amount: String(action.amount), symbol });
+      }
     } catch (err) {
       const raw = err instanceof Error ? err.message : String(err);
       let msg   = raw.slice(0, 180);
@@ -315,7 +320,7 @@ export function ChatBot({
                 {assetSymbol} Assistant
               </span>
               <span style={{ fontSize: 10, color: "var(--text-4)" }}>
-                {signer ? "wallet connected" : "read-only"}
+                {signer ? "wallet connected — can execute" : "connect wallet to execute"}
               </span>
             </div>
             <button onClick={() => setOpen(false)} style={closeBtnStyle}>✕</button>

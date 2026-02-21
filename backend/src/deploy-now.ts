@@ -1,5 +1,5 @@
 /**
- * Standalone deploy script — deploys all protocol contracts to Kite testnet.
+ * Standalone deploy script — deploys all protocol contracts to testnet.
  * Usage: npx tsx src/deploy-now.ts [assetName] [assetSymbol]
  *
  * Defaults to Gold / sGOLD for a quick first deployment.
@@ -13,7 +13,7 @@ const assetName   = process.argv[2] || "Gold";
 const assetSymbol = process.argv[3] || "sGOLD";
 
 console.log("═══════════════════════════════════════════════");
-console.log("  Kite Testnet — Contract Deployment");
+console.log("  Atlas — Contract Deployment");
 console.log(`  Asset: ${assetName} (${assetSymbol})`);
 console.log("═══════════════════════════════════════════════");
 

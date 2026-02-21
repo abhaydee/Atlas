@@ -64,6 +64,10 @@ export interface RunnerConfig {
   research: ResearchResult | OracleJobSpec;
   decimals?: number;   // scale price to (e.g. 8 for Chainlink-style)
   assetName?: string;  // used for dynamic Pyth search when no pythFeedId is stored
+  /** If set, skip fetch and use this price for the update (used after dry-run + vault check). */
+  usePrice?: { price: number; source: string };
+  /** If true, only fetch price and return it without calling updatePrice on-chain. */
+  skipUpdate?: boolean;
 }
 
 /**
@@ -80,13 +84,15 @@ export async function runOracleUpdate(config: RunnerConfig): Promise<{
   source?: string;
   error?: string;
 }> {
-  const { aggregatorAddress, research, decimals = 8, assetName } = config;
+  const { aggregatorAddress, research, decimals = 8, assetName, usePrice, skipUpdate } = config;
   const sources = research.dataSources ?? [];
 
-  let price: number | null = null;
-  let sourceName = "unknown";
+  let price: number | null = usePrice ? usePrice.price : null;
+  let sourceName = usePrice ? usePrice.source : "unknown";
 
-  for (const src of sources) {
+  if (usePrice) {
+    if (skipUpdate) return { success: true, price: usePrice.price, source: usePrice.source };
+  } else for (const src of sources) {
     // ── 1. Pyth via explicit feed ID ────────────────────────────────────────
     if (src.pythFeedId) {
       const pythPrice = await fetchPythPrice(src.pythFeedId);
@@ -135,6 +141,10 @@ export async function runOracleUpdate(config: RunnerConfig): Promise<{
 
   if (price == null || price <= 0) {
     return { success: false, error: "All data sources failed to return a valid price" };
+  }
+
+  if (skipUpdate) {
+    return { success: true, price, source: sourceName };
   }
 
   // Scale to oracle decimals (e.g. 8)

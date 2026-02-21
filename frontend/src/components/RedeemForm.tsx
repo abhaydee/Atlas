@@ -2,12 +2,16 @@ import React, { useState } from "react";
 import { ethers } from "ethers";
 import { SYNTHETIC_VAULT_ABI } from "../lib/abis.ts";
 
+export interface OperationRecord { txHash: string; operationType: string; amount: string; symbol: string }
+
 interface Props {
   vaultAddress: string; oraclePrice: string;
-  assetSymbol: string; signer: ethers.JsonRpcSigner | null; onSuccess: () => void;
+  assetSymbol: string; signer: ethers.JsonRpcSigner | null;
+  onSuccess: (message?: string) => void;
+  onOperationRecord?: (op: OperationRecord) => void;
 }
 
-export function RedeemForm({ vaultAddress, oraclePrice, assetSymbol, signer, onSuccess }: Props) {
+export function RedeemForm({ vaultAddress, oraclePrice, assetSymbol, signer, onSuccess, onOperationRecord }: Props) {
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [error,   setError]  = useState<string | null>(null);
@@ -20,8 +24,11 @@ export function RedeemForm({ vaultAddress, oraclePrice, assetSymbol, signer, onS
     setError(null); setLoading(true);
     try {
       const vault = new ethers.Contract(vaultAddress, SYNTHETIC_VAULT_ABI, signer);
-      await (await vault.redeem(ethers.parseUnits(amount, 18)) as ethers.ContractTransactionResponse).wait();
-      setAmount(""); onSuccess();
+      const tx = await vault.redeem(ethers.parseUnits(amount, 18)) as ethers.ContractTransactionResponse;
+      const receipt = await tx.wait();
+      setAmount("");
+      onSuccess("Redeemed successfully — you received USDC.");
+      if (receipt?.hash) onOperationRecord?.({ txHash: receipt.hash, operationType: "redeem", amount, symbol: assetSymbol });
     } catch (err) {
       const raw = err instanceof Error ? err.message : String(err);
       if (/user rejected|ACTION_REJECTED/i.test(raw)) setError("Transaction cancelled.");

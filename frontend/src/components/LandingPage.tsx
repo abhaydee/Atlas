@@ -34,7 +34,7 @@ const FEATURES = [
     tagBorder: "var(--green-border)",
     title: "Long the Market",
     desc: "Swap USDC for synthetic tokens in the on-chain AMM. Go long on Gold, BTC, Oil — without owning the underlying. Sell back whenever you want.",
-    pills: ["Buy long", "Sell to exit", "Live quote", "1% swap fee"],
+    pills: ["Buy long", "Sell to exit", "Live quote", "1% fee (0.5% to vault)"],
     glowColor: "rgba(16,217,130,0.10)",
     borderGlow: "rgba(16,217,130,0.22)",
   },
@@ -75,14 +75,14 @@ const HOW_IT_WORKS = [
     n: "04",
     icon: "💸",
     title: "Exit & Profit",
-    desc: "Redeem synths at oracle price, sell in the AMM pool, or earn passive 1% fees as a liquidity provider.",
+    desc: "Redeem synths at oracle price, sell in the AMM pool, or earn passive 0.5% fees as LP (0.5% to vault).",
   },
 ];
 
 const TECH_STACK = [
   { label: "Pyth Network", sub: "Oracle feeds", color: "#E6007A" },
   { label: "x402 Protocol", sub: "AI payments", color: "#00C9A7" },
-  { label: "Kite Testnet", sub: "EVM chain", color: "#3B82F6" },
+  { label: "Testnet", sub: "EVM chain", color: "#3B82F6" },
   { label: "Ethers v6", sub: "Web3 library", color: "#7C3AED" },
 ];
 
@@ -97,7 +97,7 @@ export function LandingPage({ onEnter, onTutorial }: Props) {
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Simulated animated cursor state
-  const [autoCursor, setAutoCursor] = useState({ x: "50%", y: "20%", text: "Welcome to Kite" });
+  const [autoCursor, setAutoCursor] = useState({ x: "50%", y: "20%", text: "Welcome to Atlas" });
   const [autoClicking, setAutoClicking] = useState(false);
 
   useEffect(() => {
@@ -106,7 +106,7 @@ export function LandingPage({ onEnter, onTutorial }: Props) {
 
     const runPath = async () => {
       const pts = [
-        { x: "50%", y: "15%", text: "Welcome to KITE Testnet" },
+        { x: "50%", y: "15%", text: "Welcome to Atlas" },
         { x: "25%", y: "55%", text: "Short the Market" },
         { x: "50%", y: "55%", text: "Long via AMM" },
         { x: "75%", y: "55%", text: "Autonomous Agents" },
@@ -282,13 +282,13 @@ export function LandingPage({ onEnter, onTutorial }: Props) {
         }}>
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <KiteDiamond size={28} />
+            <AtlasDiamond size={28} />
             <div>
               <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.4px", lineHeight: 1 }}>
-                KITE <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: 13 }}>[ Synthetic Markets ]</span>
+                Atlas <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: 13 }}>[ Synthetic Markets ]</span>
               </div>
               <div style={{ fontSize: 10, color: "var(--text-4)", letterSpacing: "0.3px" }}>
-                Pyth Oracles · x402 Protocol · Kite Testnet
+                Pyth Oracles · x402 Protocol · Testnet
               </div>
             </div>
           </div>
@@ -356,7 +356,7 @@ export function LandingPage({ onEnter, onTutorial }: Props) {
             animation: "fadeIn 0.8s ease 0.1s both",
           }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", boxShadow: "0 0 8px var(--accent)", animation: "glow-pulse 2s infinite", display: "inline-block" }} />
-            Live on Kite Testnet
+            Live on Testnet
           </div>
 
           {/* Headline */}
@@ -369,9 +369,13 @@ export function LandingPage({ onEnter, onTutorial }: Props) {
             animation: "reveal-up 0.8s ease 0.2s both",
             maxWidth: 900,
           }}>
-            <span className="gradient-text">Synthetic Markets</span>
+            <span className="gradient-text">Atlas</span>
             <br />
-            <span style={{ color: "var(--text-3)", fontWeight: 700, fontSize: "0.55em", letterSpacing: "-1px" }}>
+            <span style={{ color: "var(--text)", fontWeight: 800, fontSize: "0.5em", letterSpacing: "-1.5px" }}>
+              Synthetic Markets
+            </span>
+            <br />
+            <span style={{ color: "var(--text-3)", fontWeight: 700, fontSize: "0.45em", letterSpacing: "-1px" }}>
               Powered by AI · Priced by Pyth
             </span>
           </h1>
@@ -444,7 +448,7 @@ export function LandingPage({ onEnter, onTutorial }: Props) {
             {[
               { label: "Oracle Feeds", value: "Pyth Network", color: "#E6007A" },
               { label: "Collateral Model", value: "150% Over-collateralised", color: "var(--green)" },
-              { label: "Swap Fee", value: "1% → LPs", color: "var(--accent)" },
+              { label: "Swap Fee", value: "0.5% LPs · 0.5% vault", color: "var(--accent)" },
               { label: "Mint Fee", value: "0.5% → Safety Buffer", color: "var(--gold)" },
             ].map((s) => (
               <div key={s.label} style={{
@@ -722,9 +726,9 @@ export function LandingPage({ onEnter, onTutorial }: Props) {
           background: "rgba(8,12,24,0.6)", backdropFilter: "blur(10px)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <KiteDiamond size={18} />
+            <AtlasDiamond size={18} />
             <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)" }}>
-              KITE Synthetic Markets
+              Atlas Synthetic Markets
             </span>
             <span style={{ fontSize: 11, color: "var(--text-4)" }}>— Testnet</span>
           </div>
@@ -738,8 +742,8 @@ export function LandingPage({ onEnter, onTutorial }: Props) {
   );
 }
 
-// ── Kite Diamond Logo ─────────────────────────────────────────────────────────
-function KiteDiamond({ size = 28 }: { size?: number }) {
+// ── Atlas Diamond Logo ───────────────────────────────────────────────────────
+function AtlasDiamond({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
       <path d="M16 1L31 16L16 31L1 16Z" fill="url(#land-kite-grad)" />

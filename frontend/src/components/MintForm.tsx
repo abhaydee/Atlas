@@ -2,12 +2,16 @@ import React, { useState } from "react";
 import { ethers } from "ethers";
 import { SYNTHETIC_VAULT_ABI, ERC20_ABI } from "../lib/abis.ts";
 
+export interface OperationRecord { txHash: string; operationType: string; amount: string; symbol: string }
+
 interface Props {
   vaultAddress: string; usdcAddress: string; oraclePrice: string;
-  assetSymbol: string; signer: ethers.JsonRpcSigner | null; onSuccess: () => void;
+  assetSymbol: string; signer: ethers.JsonRpcSigner | null;
+  onSuccess: (message?: string) => void;
+  onOperationRecord?: (op: OperationRecord) => void;
 }
 
-export function MintForm({ vaultAddress, usdcAddress, oraclePrice, assetSymbol, signer, onSuccess }: Props) {
+export function MintForm({ vaultAddress, usdcAddress, oraclePrice, assetSymbol, signer, onSuccess, onOperationRecord }: Props) {
   const [amount, setAmount] = useState("");
   const [status, setStatus] = useState<"idle" | "approving" | "minting">("idle");
   const [error,  setError]  = useState<string | null>(null);
@@ -36,8 +40,11 @@ export function MintForm({ vaultAddress, usdcAddress, oraclePrice, assetSymbol, 
         await (await usdc.approve(vaultAddress, big) as ethers.ContractTransactionResponse).wait();
       }
       setStatus("minting");
-      await (await vault.mint(big) as ethers.ContractTransactionResponse).wait();
-      setAmount(""); setStatus("idle"); onSuccess();
+      const tx = await vault.mint(big) as ethers.ContractTransactionResponse;
+      const receipt = await tx.wait();
+      setAmount(""); setStatus("idle");
+      onSuccess("Minted successfully — you received synthetic tokens.");
+      if (receipt?.hash) onOperationRecord?.({ txHash: receipt.hash, operationType: "mint", amount, symbol: assetSymbol });
     } catch (err) {
       setError(parseErr(err)); setStatus("idle");
     }
@@ -88,6 +95,7 @@ export function MintForm({ vaultAddress, usdcAddress, oraclePrice, assetSymbol, 
 
       {error && <ErrorBox msg={error} hint={
         error.includes("stale") ? "Stale oracle — use Dev Tools → Refresh Oracle, then retry." :
+        error.includes("undercollateral") ? "Refreshing won't help. Deployer can add USDC via seed-pool or the vault needs a lower oracle price." :
         error.includes("USDC") || error.includes("balance") ? "Get testnet USDC at faucet.gokite.ai" : undefined
       } />}
 
@@ -105,7 +113,7 @@ function parseErr(err: unknown): string {
   if (/user rejected|ACTION_REJECTED/i.test(raw)) return "Transaction cancelled.";
   if (/stale/i.test(raw)) return "Oracle price is stale (>2h old). Refresh oracle via Dev Tools.";
   if (/too small/i.test(raw)) return "Amount too small — try a larger value.";
-  if (/undercollateral/i.test(raw)) return "Vault undercollateralised — oracle may be stale. Refresh oracle in Dev Tools.";
+  if (/undercollateral/i.test(raw)) return "Vault undercollateralised at the current oracle price. Refreshing won't fix this — the deployer may need to add USDC to the vault or wait for price to drop.";
   if (/insufficient balance|transfer amount exceeds/i.test(raw)) return "Insufficient USDC balance.";
   if (/insufficient allowance/i.test(raw)) return "Approval failed — try again.";
   const m = raw.match(/reason="([^"]+)"|revert reason: ([^\n]+)|execution reverted: ([^\n"]+)/i);

@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kite — Synthetic Markets</title>
+    <title>Atlas — Synthetic Markets</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -50,6 +50,10 @@
         --text-3: #5A6480;
         --text-4: #3A4360;
 
+        /* ── Typography: display (headings) + body ── */
+        --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
         /* ── Layout ── */
         --radius:    8px;
         --radius-lg: 12px;
@@ -60,7 +64,7 @@
         --shadow-glow: 0 0 24px rgba(0,201,167,0.06);
         --shadow-hover: 0 0 0 1px var(--accent-border), 0 4px 24px rgba(0,201,167,0.12);
 
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        font-family: var(--font-display);
         font-size: 14px;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
@@ -106,9 +110,10 @@
         border-color: var(--accent-border) !important;
       }
 
-      /* ── Number font ── */
-      .num { font-family: 'JetBrains Mono', monospace; }
-      .mono { font-family: 'JetBrains Mono', monospace; }
+      /* ── Display headings (bold, high-impact) ── */
+      h1, h2, h3, .font-display { font-family: var(--font-display); font-weight: 700; }
+      /* ── Number / code ── */
+      .num, .mono { font-family: var(--font-mono); }
 
       /* ── Animations ── */
       @keyframes spin        { to { transform: rotate(360deg); } }

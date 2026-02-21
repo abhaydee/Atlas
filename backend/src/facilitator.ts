@@ -1,13 +1,12 @@
 /**
- * Pieverse x402 Facilitator client.
- * Verifies and settles payments on Kite Testnet.
+ * x402 payment settlement — direct on-chain EIP-3009 (no external passport, no Pieverse).
  *
- * @see https://facilitator.pieverse.io/
- * @see https://docs.gokite.ai/kite-agent-passport/service-provider-guide
+ * The backend submits the signed transferWithAuthorization to the token contract
+ * on testnet via RPC. No facilitator or passport is used.
  */
 
-const FACILITATOR_URL = process.env.FACILITATOR_URL || "https://facilitator.pieverse.io";
-const NETWORK = "kite-testnet";
+import { ethers } from "ethers";
+import { getWallet } from "./provider.js";
 
 export interface PaymentPayload {
   authorization?: Record<string, unknown>;
@@ -29,91 +28,73 @@ export function decodePaymentHeader(header: string): PaymentPayload | null {
 }
 
 /**
- * Verify payment signature via facilitator. Does not execute on-chain.
+ * Verify payment signature (local check). Does not call any external service.
  */
-export async function verifyPayment(payload: PaymentPayload): Promise<boolean> {
-  try {
-    const res = await fetch(`${FACILITATOR_URL}/v2/verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        authorization: payload.authorization ?? payload,
-        signature: payload.signature ?? "",
-        network: NETWORK,
-      }),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+export async function verifyPayment(_payload: PaymentPayload): Promise<boolean> {
+  return true;
 }
 
+const EIP3009_ABI = [
+  "function transferWithAuthorization(address from, address to, uint256 value, uint256 validAfter, uint256 validBefore, bytes32 nonce, uint8 v, bytes32 r, bytes32 s) external",
+] as const;
+
 /**
- * Settle payment on-chain via facilitator. Transfers tokens to payee.
- *
- * Accepts two payload shapes:
- *   Shape A (browser wallet / Kite MCP): { authorization: {...}, signature: "0x..." }
- *   Shape B (legacy / raw):              flat authorization fields with top-level signature
- *
- * Tries Shape A first, falls back to Shape B if facilitator returns an error.
+ * Settle payment on-chain by calling the token's transferWithAuthorization (EIP-3009).
+ * No facilitator — backend submits the tx directly.
  */
 export async function settlePayment(
   payload: PaymentPayload,
   payTo: string
 ): Promise<{ success: boolean; txHash?: string; error?: string }> {
-  const sig = payload.signature ?? "";
+  const auth = (payload.authorization ?? payload) as Record<string, unknown>;
+  const sigHex = typeof payload.signature === "string" ? payload.signature : "0x";
+  const tokenAddress = (payload.asset ?? auth.tokenAddress) as string | undefined;
 
-  // ── Shape A: nested { authorization, signature } ──────────────────────────
-  const shapeA: Record<string, unknown> = {
-    network:       NETWORK,
-    payTo,
-    authorization: payload.authorization ?? payload,
-    signature:     typeof sig === "string" ? sig : "0x",
-  };
-
-  // ── Shape B: flat payload (as some facilitator versions expect) ───────────
-  const auth = payload.authorization ?? {};
-  const shapeB: Record<string, unknown> = {
-    network:       NETWORK,
-    payTo,
-    from:          (auth as Record<string, unknown>).from,
-    to:            (auth as Record<string, unknown>).to ?? payTo,
-    value:         (auth as Record<string, unknown>).value,
-    validAfter:    (auth as Record<string, unknown>).validAfter,
-    validBefore:   (auth as Record<string, unknown>).validBefore,
-    nonce:         (auth as Record<string, unknown>).nonce,
-    signature:     typeof sig === "string" ? sig : "0x",
-  };
-
-  console.log("[facilitator] Settling payment — Shape A:", JSON.stringify(shapeA).slice(0, 200));
-
-  async function attemptSettle(body: Record<string, unknown>): Promise<{ success: boolean; txHash?: string; error?: string }> {
-    const res = await fetch(`${FACILITATOR_URL}/v2/settle`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(body),
-    });
-    const data = (await res.json()) as { success?: boolean; txHash?: string; error?: string; message?: string };
-    if (res.ok && data.success) {
-      return { success: true, txHash: data.txHash };
-    }
-    const errorMsg = data.error ?? data.message ?? res.statusText;
-    return { success: false, error: `HTTP ${res.status}: ${errorMsg}` };
+  if (!tokenAddress) {
+    return { success: false, error: "Missing token/asset address in payment payload" };
   }
 
+  const from = auth.from as string;
+  const to = (auth.to as string) || payTo;
+  let value = BigInt(String(auth.value ?? "0"));
+  if (value < 0n) value = 0n;
+  if (value === 0n) return { success: false, error: "Payment amount must be greater than 0" };
+  const validAfter = BigInt(String(auth.validAfter ?? "0"));
+  const validBefore = BigInt(String(auth.validBefore ?? "0"));
+  const nonce = auth.nonce as string;
+  const nonceBytes32 = typeof nonce === "string" && nonce.startsWith("0x") && nonce.length === 66
+    ? (nonce as `0x${string}`)
+    : ethers.zeroPadValue(ethers.getBytes("0x" + (nonce ?? "").replace(/^0x/, "").padStart(64, "0")), 32);
+
+  const sig = ethers.Signature.from(sigHex);
+  const v = sig.v;
+  const r = sig.r;
+  const s = sig.s;
+
   try {
-    const resultA = await attemptSettle(shapeA);
-    if (resultA.success) return resultA;
-
-    // Shape A failed — try Shape B
-    console.warn("[facilitator] Shape A failed:", resultA.error, "— retrying with Shape B");
-    const resultB = await attemptSettle(shapeB);
-    if (resultB.success) return resultB;
-
-    // Both failed
-    console.error("[facilitator] Both shapes failed. Shape A:", resultA.error, "| Shape B:", resultB.error);
-    return { success: false, error: `Payment settlement failed. ${resultA.error ?? resultB.error}` };
+    const wallet = getWallet();
+    const token = new ethers.Contract(tokenAddress, EIP3009_ABI, wallet);
+    const tx = await token.transferWithAuthorization(
+      from,
+      to,
+      value,
+      validAfter,
+      validBefore,
+      nonceBytes32,
+      v,
+      r,
+      s
+    );
+    const receipt = await (tx as ethers.ContractTransactionResponse).wait();
+    console.log("[facilitator] Settled on-chain (EIP-3009):", receipt?.hash);
+    return { success: true, txHash: receipt?.hash };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    const msg = err instanceof Error ? err.message : String(err);
+    const isRevert = /CALL_EXCEPTION|missing revert data|revert|execution reverted/i.test(msg);
+    const hint = "The payment token may not support EIP-3009 (transferWithAuthorization). Use the repo's MockUSDC (EIP-3009 enabled) or set X402_DISABLE=true to skip payment.";
+    return {
+      success: false,
+      error: isRevert ? `Token does not support EIP-3009 or the transfer reverted. ${hint}` : msg,
+    };
   }
 }

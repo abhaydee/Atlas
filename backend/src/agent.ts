@@ -1,5 +1,5 @@
 /**
- * Kite Research Agent — powered by OpenRouter.
+ * Atlas Research Agent — powered by OpenRouter.
  *
  * Simulates Stage 1 (Data Source Discovery) from the protocol spec:
  * researches and evaluates reliable data sources for a given asset class.

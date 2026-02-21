@@ -18,7 +18,10 @@ dotenv.config();
 
 const USDC_ADDRESS = process.env.USDC_ADDRESS || "";
 
-// Use external Switchboard feed only if explicitly provided (not deployed on Kite today)
+// If true, deploy MockUSDC (mintable ERC20, 6 decimals) and use it instead of real USDC. Much easier for local/testnet — mint whenever needed.
+const USE_MOCK_USDC = process.env.USE_MOCK_USDC === "true";
+
+// Use external Switchboard feed only if explicitly provided
 const SWITCHBOARD_FEED = process.env.SWITCHBOARD_FEED_ADDRESS || "";
 
 // Amount of USDC (integer, human-readable) to seed the AMM pool on market creation.
@@ -57,7 +60,7 @@ export interface DeployResult {
 }
 
 export interface DeployEvent {
-  contract: "OracleAggregator" | "SyntheticToken" | "SyntheticVault" | "SynthPool";
+  contract: "MockUSDC" | "OracleAggregator" | "SyntheticToken" | "SyntheticVault" | "SynthPool";
   address:  string;
   txHash?:  string;
 }
@@ -70,11 +73,29 @@ export async function deployProtocol(
   research?: import("./agent.js").ResearchResult,
   onDeploy?: DeployCallback
 ): Promise<DeployResult> {
-  if (!USDC_ADDRESS) throw new Error("USDC_ADDRESS not set in backend/.env");
+  if (!USE_MOCK_USDC && !USDC_ADDRESS) throw new Error("Set USDC_ADDRESS in backend/.env or USE_MOCK_USDC=true to use a mock token");
 
   const wallet = getWallet();
   const deployerAddress = wallet.address;
   console.log(`[deployer] Wallet: ${deployerAddress}`);
+
+  // ── 0. Optional: deploy MockUSDC and mint to deployer ─────────────────────
+  let usdcAddress: string;
+  if (USE_MOCK_USDC) {
+    console.log("[deployer] Deploying MockUSDC (mintable, 6 decimals)...");
+    const mockArt = loadArtifact("MockUSDC", "mocks");
+    const mockFactory = new ethers.ContractFactory(mockArt.abi, mockArt.bytecode, wallet);
+    const mockUsdc = await mockFactory.deploy(deployerAddress);
+    await mockUsdc.waitForDeployment();
+    usdcAddress = await mockUsdc.getAddress();
+    const mintTx = await (mockUsdc as ethers.Contract).mint(deployerAddress, 1_000_000n * 10n ** 6n);
+    await (mintTx as ethers.ContractTransactionResponse).wait();
+    console.log("[deployer] MockUSDC:", usdcAddress, "— minted 1,000,000 to deployer");
+    const mockReceipt = await mockUsdc.deploymentTransaction()?.wait();
+    onDeploy?.({ contract: "MockUSDC", address: usdcAddress, txHash: mockReceipt?.hash });
+  } else {
+    usdcAddress = USDC_ADDRESS;
+  }
 
   // ── 1. OracleAggregator (real data from URLs) or external Switchboard feed ──
   let oracleAggregatorAddress: string;
@@ -128,7 +149,7 @@ export async function deployProtocol(
   const vaultContract = await vaultFactory.deploy(
     tokenAddress,
     oracleReaderAddress,
-    USDC_ADDRESS,
+    usdcAddress,
     15n * 10n ** 17n // 150% collateral ratio — overcollateralised
   );
   await vaultContract.waitForDeployment();
@@ -150,7 +171,7 @@ export async function deployProtocol(
   const poolFactory = new ethers.ContractFactory(poolArt.abi, poolArt.bytecode, wallet);
   const lpName   = `${assetName} LP`;
   const lpSymbol = `${assetSymbol}LP`;
-  const poolContract = await poolFactory.deploy(USDC_ADDRESS, tokenAddress, lpName, lpSymbol);
+  const poolContract = await poolFactory.deploy(usdcAddress, tokenAddress, lpName, lpSymbol);
   await poolContract.waitForDeployment();
   const poolAddress = await poolContract.getAddress();
   const poolReceipt = await poolContract.deploymentTransaction()?.wait();
@@ -168,7 +189,7 @@ export async function deployProtocol(
       tokenAbi:  tokenArt.abi,
       poolAddress,
       poolAbi:   poolArt.abi,
-      usdcAddress: USDC_ADDRESS,
+      usdcAddress,
       seedUsdc:    POOL_SEED_USDC,
     });
   } else {
@@ -182,7 +203,7 @@ export async function deployProtocol(
     syntheticVault:   vaultAddress,
     oracleAggregator: oracleAggregatorAddress,
     mockOracle:       mockOracleAddress,
-    usdc:             USDC_ADDRESS,
+    usdc:             usdcAddress,
     synthPool:        poolAddress,
   };
 

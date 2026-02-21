@@ -1,6 +1,6 @@
 /**
  * Tutorial — Full-screen step-by-step interactive guide.
- * Explains every feature of the Kite Synthetic Markets platform.
+ * Explains every feature of the Atlas Synthetic Markets platform.
  * Rendered as a fixed overlay; can be opened from landing or from the nav.
  */
 
@@ -76,14 +76,14 @@ function Highlight({ children, color = "var(--accent)" }: { children: React.Reac
 }
 
 const STEPS: Step[] = [
-  // ── 0: What is KITE ──────────────────────────────────────────────────────
+  // ── 0: What is Atlas ─────────────────────────────────────────────────────
   {
     emoji: "🌐",
     tag: "Overview",
     tagColor: "var(--accent)",
-    title: "Welcome to KITE",
+    title: "Welcome to Atlas",
     body: [
-      "KITE lets you trade synthetic versions of real-world assets — Gold, Bitcoin, Silver, Oil — without owning the underlying asset.",
+      "Atlas lets you trade synthetic versions of real-world assets — Gold, Bitcoin, Silver, Oil — without owning the underlying asset.",
       "Every market is powered by Pyth Network oracles for live prices, AI agents for automated liquidity, and an on-chain AMM pool for trading.",
       "You can go long or short, provide liquidity to earn fees, or just chat to the assistant and it handles everything.",
     ],
@@ -207,7 +207,7 @@ const STEPS: Step[] = [
     body: [
       "The AMM Pool is a decentralised vending machine: put USDC in, get synth tokens out. The price is determined by the ratio of USDC to synths in the pool.",
       "Buying synths = going long. If Gold rises 10%, your sGLD tokens are now worth 10% more USDC in the pool.",
-      "There's a 1% swap fee on every trade, which goes to liquidity providers. Larger trades shift the pool ratio, causing price impact — shown before you confirm.",
+      "There's a 1% swap fee on every trade (0.5% to LPs, 0.5% to the vault). Larger trades shift the pool ratio, causing price impact — shown before you confirm.",
     ],
     visual: (
       <Visual>
@@ -221,7 +221,7 @@ const STEPS: Step[] = [
             { label: "USDC Reserve", value: "$1,000.00" },
             { label: "sGLD Reserve", value: "11.904762" },
             { label: "AMM Price", value: "$84.00" },
-            { label: "Swap Fee", value: "1%" },
+            { label: "Swap Fee", value: "0.5% LP · 0.5% vault" },
           ].map((r) => (
             <div key={r.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 12 }}>
               <span style={{ color: "var(--text-3)" }}>{r.label}</span>
@@ -244,7 +244,7 @@ const STEPS: Step[] = [
     title: "Earn Fees as LP",
     body: [
       "Add both USDC and synth tokens to the pool in the current ratio. You receive LP tokens representing your share of the pool.",
-      "Every time anyone swaps, 1% of the trade stays in the pool — growing your share passively. No impermanent loss risk from oracle-based redemptions.",
+      "Every time anyone swaps, 0.5% of the trade goes to you as LP and 0.5% to the vault — growing your share passively. No impermanent loss risk from oracle-based redemptions.",
       "Remove liquidity any time by burning your LP tokens. You get back USDC + synths proportional to your share, plus all accumulated fees.",
     ],
     visual: (
@@ -259,7 +259,7 @@ const STEPS: Step[] = [
         <FlowArrow />
         <FlowBox label="Receive LP Tokens" sub="your share certificate" color="#3B82F6" icon="🎟" />
         <FlowArrow />
-        <FlowBox label="Earn 1% of every swap" sub="forever, proportional to share" color="var(--green)" icon="💸" />
+        <FlowBox label="Earn 0.5% of every swap as LP" sub="0.5% to vault · proportional to share" color="var(--green)" icon="💸" />
       </Visual>
     ),
   },
@@ -311,7 +311,7 @@ const STEPS: Step[] = [
   // ── 7: Chatbot ───────────────────────────────────────────────────────────
   {
     emoji: "💬",
-    tag: "Assistant",
+    tag: "sXAG Assistant",
     tagColor: "var(--accent)",
     title: "Chat to Trade",
     body: [
@@ -329,7 +329,7 @@ const STEPS: Step[] = [
           {/* Chat header */}
           <div style={{ background: "var(--surface-3)", borderBottom: "1px solid var(--border)", padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", boxShadow: "0 0 6px var(--green)" }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>sXAG Assistant</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>Assistant</span>
           </div>
           {/* Messages */}
           <div style={{ padding: "12px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -471,7 +471,7 @@ export function Tutorial({ onClose, onEnter }: Props) {
       case 1: path = [{ x: "72%", y: "40%", text: "Live Pyth Data" }, { x: "72%", y: "60%", text: "Sub-second tracking" }]; break;
       case 2: path = [{ x: "72%", y: "25%", text: "Deposit USDC" }, { x: "72%", y: "45%", text: "Pay 0.5% fee" }, { x: "72%", y: "85%", text: "Mint sGLD" }]; break;
       case 3: path = [{ x: "62%", y: "35%", text: "Buy cheap" }, { x: "72%", y: "65%", text: "Redeem $85 Vault" }, { x: "72%", y: "85%", text: "Profit 🎉" }]; break;
-      case 4: path = [{ x: "72%", y: "45%", text: "Check pool state" }, { x: "72%", y: "65%", text: "1% Swap fee" }]; break;
+      case 4: path = [{ x: "72%", y: "45%", text: "Check pool state" }, { x: "72%", y: "65%", text: "1% fee (0.5% to vault)" }]; break;
       case 5: path = [{ x: "60%", y: "25%", text: "USDC" }, { x: "84%", y: "25%", text: "Synth" }, { x: "72%", y: "50%", text: "Provide LP pair" }, { x: "72%", y: "75%", text: "Earn swap fees" }]; break;
       case 6: path = [{ x: "60%", y: "40%", text: "Seeds liquidity 🏦" }, { x: "84%", y: "40%", text: "Arbs price gaps ⚡" }, { x: "72%", y: "75%", text: "Auto manages" }]; break;
       case 7: path = [{ x: "72%", y: "35%", text: `You say "mint"` }, { x: "72%", y: "50%", text: "Previews action" }, { x: "72%", y: "70%", text: "Click ✓ Execute" }]; break;

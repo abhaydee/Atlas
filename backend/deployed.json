@@ -1,0 +1,12 @@
+{
+  "network": "kiteTestnet",
+  "deployer": "0x1a5de860035E2E388140345a0F15897A19A92DB8",
+  "mockOracle": "0x9fC166A65bFbce43Bbe2B269dC272641B57eb5B4",
+  "syntheticToken": "0xb2c0BC8EC4DC7dB4aa8a3f957CFF070AB99634F2",
+  "oracleReader": "0x36A6c51832aB87d4A284f57760bF0c05Ca1d6790",
+  "syntheticVault": "0x379EC6670B38C6060dAc7A780b37FE925509Ee42",
+  "usdc": "0xF26Aacf867E656C77c28Fad71a0B93557D18E431",
+  "assetName": "Synthetic MOTO",
+  "assetSymbol": "sMOTO",
+  "deployedAt": "2026-02-21T12:54:25.839Z"
+}

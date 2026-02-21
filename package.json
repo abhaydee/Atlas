@@ -1,7 +1,7 @@
 {
   "name": "kite-ai-trade-agent",
   "version": "1.0.0",
-  "description": "Autonomous AI trade agent using Kite Agent Passport and x402 protocol",
+  "description": "Atlas — Synthetic Markets. Autonomous AI agent and x402 protocol.",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",

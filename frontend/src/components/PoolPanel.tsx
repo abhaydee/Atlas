@@ -21,6 +21,7 @@ interface Props {
   backendUrl:    string;
   marketId:      string;
   onSuccess:     () => void;
+  onOperationRecord?: (op: { txHash: string; operationType: string; amount: string; symbol: string }) => void;
 }
 
 type Tab = "swap" | "liquidity";
@@ -37,7 +38,7 @@ interface PoolInfo {
 
 export function PoolPanel({
   poolAddress, usdcAddress, synthAddress, assetSymbol,
-  oraclePrice, signer, userAddress, backendUrl, marketId, onSuccess,
+  oraclePrice, signer, userAddress, backendUrl, marketId, onSuccess, onOperationRecord,
 }: Props) {
   const [tab,        setTab]        = useState<Tab>("swap");
   const [swapDir,    setSwapDir]    = useState<SwapDir>("buy");
@@ -163,7 +164,9 @@ export function PoolPanel({
           await (await usdcContract.approve(poolAddress, amountIn) as ethers.ContractTransactionResponse).wait();
         }
         setSwapStatus("swapping");
-        await (await pool.swapUsdcForSynth(amountIn, 0n) as ethers.ContractTransactionResponse).wait();
+        const txBuy = await pool.swapUsdcForSynth(amountIn, 0n) as ethers.ContractTransactionResponse;
+        const recBuy = await txBuy.wait();
+        if (recBuy?.hash) onOperationRecord?.({ txHash: recBuy.hash, operationType: "buy", amount: swapIn, symbol: "USDC" });
       } else {
         // Approve synth → pool
         const synthContract = new ethers.Contract(synthAddress, ERC20_ABI, signer);
@@ -175,7 +178,9 @@ export function PoolPanel({
           await (await synthContract.approve(poolAddress, amountIn) as ethers.ContractTransactionResponse).wait();
         }
         setSwapStatus("swapping");
-        await (await pool.swapSynthForUsdc(amountIn, 0n) as ethers.ContractTransactionResponse).wait();
+        const txSell = await pool.swapSynthForUsdc(amountIn, 0n) as ethers.ContractTransactionResponse;
+        const recSell = await txSell.wait();
+        if (recSell?.hash) onOperationRecord?.({ txHash: recSell.hash, operationType: "sell", amount: swapIn, symbol: assetSymbol });
       }
       setSwapIn("");
       setSwapQuote(null);
@@ -215,10 +220,12 @@ export function PoolPanel({
       }
 
       setLiqStatus("pending");
-      await (await pool.addLiquidity(usdcAmt, synthAmt) as ethers.ContractTransactionResponse).wait();
+      const txAdd = await pool.addLiquidity(usdcAmt, synthAmt) as ethers.ContractTransactionResponse;
+      const recAdd = await txAdd.wait();
+      if (recAdd?.hash) onOperationRecord?.({ txHash: recAdd.hash, operationType: "add-liquidity", amount: addUsdc, symbol: "USDC" });
 
       setAddUsdc(""); setAddSynth("");
-      setLiqResult("Liquidity added! You now earn 1% fees on all swaps.");
+      setLiqResult("Liquidity added! You earn 0.5% of swap fees as LP; 0.5% goes to the vault.");
       setLiqStatus("idle");
       await fetchPool();
       onSuccess();
@@ -238,7 +245,9 @@ export function PoolPanel({
 
     try {
       setLiqStatus("pending");
-      await (await pool.removeLiquidity(lpRaw) as ethers.ContractTransactionResponse).wait();
+      const txRem = await pool.removeLiquidity(lpRaw) as ethers.ContractTransactionResponse;
+      const recRem = await txRem.wait();
+      if (recRem?.hash) onOperationRecord?.({ txHash: recRem.hash, operationType: "remove-liquidity", amount: removeLP, symbol: "LP" });
       setRemoveLP("");
       setLiqResult("Liquidity removed. Tokens returned to your wallet.");
       setLiqStatus("idle");
@@ -339,7 +348,7 @@ export function PoolPanel({
                   : `$${swapQuote.out} USDC`}
               </strong></div>
               <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
-                Price impact: {swapQuote.impact} · Fee: 1%
+                Price impact: {swapQuote.impact} · Fee: 1% (0.5% to vault)
               </div>
             </div>
           )}
@@ -402,7 +411,7 @@ export function PoolPanel({
                 </div>
               )}
               <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 12 }}>
-                You earn 1% of every swap proportional to your LP share.
+                You earn 0.5% of every swap as LP (0.5% goes to the vault).
               </div>
               {liqError  && <div style={errorStyle}>{liqError}</div>}
               {liqResult && <div style={successStyle}>{liqResult}</div>}

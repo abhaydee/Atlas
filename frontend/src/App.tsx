@@ -11,6 +11,7 @@ import { ProgressTimeline, type JobRecord }      from "./components/ProgressTime
 import { PriceChart }                            from "./components/PriceChart.tsx";
 import { AgentConsole }                          from "./components/AgentConsole.tsx";
 import { ChatBot }                              from "./components/ChatBot.tsx";
+import { OperationsTable, loadOperationsForMarket, saveOperationsForMarket, OPERATION_LABELS, type OperationEntry } from "./components/OperationsTable.tsx";
 import { LandingPage }                          from "./components/LandingPage.tsx";
 import { Tutorial }                             from "./components/Tutorial.tsx";
 import { ERC20_ABI, SYNTHETIC_TOKEN_ABI }        from "./lib/abis.ts";
@@ -33,10 +34,11 @@ interface MarketData {
 }
 
 interface CreateForm { assetName: string; assetSymbol: string; assetDescription: string; totalPayment: string }
+interface SupportedAsset { displayName: string; tokenSymbol: string; description: string; pythSymbol: string; assetType: string }
 type Phase = "idle" | "creating" | "streaming" | "done" | "failed";
 
-// ── Kite Diamond Logo ─────────────────────────────────────────────────────────
-function KiteLogo({ size = 28 }: { size?: number }) {
+// ── Atlas Logo ───────────────────────────────────────────────────────────────
+function AtlasLogo({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
       <path d="M16 1L31 16L16 31L1 16Z" fill="url(#kite-grad)" />
@@ -86,15 +88,15 @@ function SectionHeader({ title, bracket, sub }: { title: string; bracket: string
     <div style={{ marginTop: 32, marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{ width: 3, height: 22, borderRadius: 2, background: "linear-gradient(180deg, var(--accent) 0%, transparent 100%)" }} />
-        <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
+        <span style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>
           {title}
         </span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)", opacity: 0.8 }}>
+        <span style={{ fontFamily: "var(--font-display)", fontSize: 13, fontWeight: 700, color: "var(--accent)", opacity: 0.9 }}>
           [ {bracket} ]
         </span>
       </div>
       <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg, var(--border-2) 0%, transparent 100%)" }} />
-      <span style={{ fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>{sub}</span>
+      <span style={{ fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap", fontWeight: 500 }}>{sub}</span>
     </div>
   );
 }
@@ -156,9 +158,9 @@ function X402Stat({ label, value, accent, mono }: { label: string; value: string
 }
 
 // ── Error banner ──────────────────────────────────────────────────────────────
-function ErrorBanner({ message }: { message: string }) {
+function ErrorBanner({ message, paymentTokenLabel = "USDT" }: { message: string; paymentTokenLabel?: string }) {
   const hints: Array<[RegExp, string]> = [
-    [/insufficient|balance/i, "Top up the agent wallet with testnet USDT at faucet.gokite.ai"],
+    [/insufficient|balance/i, `Top up the agent wallet with testnet ${paymentTokenLabel} at faucet.gokite.ai`],
     [/revoked/i,              "Set AGENT_REVOKED=false in backend .env and restart the server"],
     [/cap|limit/i,            "Daily spend cap reached — wait for UTC midnight reset"],
     [/stale/i,                "Use Dev Tools → Refresh Oracle to push a fresh price on-chain"],
@@ -191,9 +193,9 @@ function ContractRow({ label, address }: { label: string; address: string }) {
 }
 
 // ── Form field ────────────────────────────────────────────────────────────────
-function Field({ label, value, onChange, placeholder, type = "text", hint }: {
+function Field({ label, value, onChange, placeholder, type = "text", hint, readOnly, min }: {
   label: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; type?: string; hint?: string;
+  placeholder?: string; type?: string; hint?: string; readOnly?: boolean; min?: string;
 }) {
   return (
     <div style={{ marginBottom: 16 }}>
@@ -201,19 +203,26 @@ function Field({ label, value, onChange, placeholder, type = "text", hint }: {
         {label}
       </label>
       <input
-        type={type} value={value} placeholder={placeholder}
+        type={type} value={value} placeholder={placeholder} min={min}
         onChange={(e) => onChange(e.target.value)}
         className="field-input"
+        readOnly={readOnly}
+        style={readOnly ? { opacity: 0.9, cursor: "default" } : undefined}
       />
       {hint && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5 }}>{hint}</div>}
     </div>
   );
 }
 
+// ── Route helpers (landing at /, app at /app) ──────────────────────────────────
+function isLandingPath(path: string) {
+  return path === "/" || path === "" || path === "/index.html";
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const [view, setView] = useState<"dashboard" | "market" | "create">("dashboard");
-  const [showLanding,  setShowLanding]  = useState(true);
+  const [showLanding,  setShowLanding]  = useState(() => isLandingPath(window.location.pathname));
   const [showTutorial, setShowTutorial] = useState(false);
   const [provider,    setProvider]    = useState<ethers.BrowserProvider | null>(null);
   const [signer,      setSigner]      = useState<ethers.JsonRpcSigner | null>(null);
@@ -225,6 +234,7 @@ export default function App() {
   const [devPrice,   setDevPrice]   = useState("");
   const [seedAmount, setSeedAmount] = useState("");
   const [devLoading, setDevLoading] = useState(false);
+  const [mintUsdcLoading, setMintUsdcLoading] = useState(false);
   const [toast, setToast]           = useState<Toast | null>(null);
   const [createForm, setCreateForm] = useState<CreateForm>({
     assetName: "Silver", assetSymbol: "sXAG",
@@ -235,6 +245,24 @@ export default function App() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [lastJob,     setLastJob]     = useState<JobRecord | null>(null);
   const [phaseErr,    setPhaseErr]    = useState<string | null>(null);
+  const [supportedAssets, setSupportedAssets] = useState<SupportedAsset[]>([]);
+  const [x402TokenLabel, setX402TokenLabel] = useState("USDT");
+  const [x402PerRequestCap, setX402PerRequestCap] = useState(10);
+  const [x402DailyCap, setX402DailyCap] = useState(50);
+  const [x402Disabled, setX402Disabled] = useState(false);
+  const [operations, setOperations] = useState<OperationEntry[]>([]);
+
+  useEffect(() => {
+    fetch(`${BACKEND}/x402-status`)
+      .then((r) => r.json())
+      .then((data: { tokenLabel?: string; perRequestCap?: number; dailyCap?: number; mode?: string; createMarketRequiresPayment?: boolean }) => {
+        setX402TokenLabel(data.tokenLabel ?? "USDT");
+        setX402PerRequestCap(Number(data.perRequestCap) || 10);
+        setX402DailyCap(Number(data.dailyCap) || 50);
+        setX402Disabled(data.mode === "disabled" || data.createMarketRequiresPayment === false);
+      })
+      .catch(() => {});
+  }, []);
 
   function showToast(msg: string, type: Toast["type"]) {
     setToast({ msg, type });
@@ -295,27 +323,112 @@ export default function App() {
 
   useEffect(() => { void fetchBalances(); }, [fetchBalances]);
 
+  // ── Sync landing/app with URL (back button + direct / or /app) ─────────────────
+  useEffect(() => {
+    function onPopState() {
+      setShowLanding(isLandingPath(window.location.pathname));
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  function goHome() {
+    setShowLanding(true);
+    window.history.pushState(null, "", "/");
+  }
+
+  // ── Operations log (per market, persisted in localStorage) ─────────────────────
+  useEffect(() => {
+    if (selectedMarket) setOperations(loadOperationsForMarket(selectedMarket.id));
+    else setOperations([]);
+  }, [selectedMarket?.id]);
+
+  function recordOperation(marketId: string, op: { txHash: string; operationType: string; amount: string; symbol: string }) {
+    const list = loadOperationsForMarket(marketId);
+    const entry: OperationEntry = {
+      id: crypto.randomUUID(),
+      type: op.operationType,
+      label: OPERATION_LABELS[op.operationType] ?? op.operationType,
+      amount: op.amount,
+      symbol: op.symbol,
+      txHash: op.txHash,
+      timestamp: new Date().toISOString(),
+    };
+    list.push(entry);
+    saveOperationsForMarket(marketId, list);
+    if (marketId === selectedMarket?.id) setOperations([...list]);
+  }
+
   // ── Navigation ────────────────────────────────────────────────────────────────
   function goMarket(s: MarketSummary) { setSelectedMarket(null); setView("market"); void fetchSelectedMarket(s.id); }
   function goDash() { setView("dashboard"); setSelectedMarket(null); }
   function goCreate() { setPhase("idle"); setActiveJobId(null); setLastJob(null); setPhaseErr(null); setView("create"); }
 
+  // ── Supported assets for create form ─────────────────────────────────────────
+  useEffect(() => {
+    if (view !== "create") return;
+    fetch(`${BACKEND}/supported-assets`)
+      .then((r) => r.json())
+      .then((data: { assets?: SupportedAsset[] }) => setSupportedAssets(data.assets ?? []))
+      .catch(() => setSupportedAssets([]));
+  }, [view]);
+
+  // Resolve typed asset name to supported asset and keep symbol/description in sync
+  const resolvedCreateAsset = createForm.assetName.trim()
+    ? supportedAssets.find((a) => a.displayName.toLowerCase() === createForm.assetName.trim().toLowerCase())
+    : null;
+  useEffect(() => {
+    if (resolvedCreateAsset) {
+      setCreateForm((f) => ({
+        ...f,
+        assetSymbol: resolvedCreateAsset.tokenSymbol,
+        assetDescription: resolvedCreateAsset.description,
+      }));
+    } else if (!createForm.assetName.trim()) {
+      setCreateForm((f) => ({ ...f, assetSymbol: "", assetDescription: "" }));
+    }
+  }, [createForm.assetName, resolvedCreateAsset?.displayName]);
+
   // ── Create market ─────────────────────────────────────────────────────────────
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    setPhase("creating"); setPhaseErr(null); setActiveJobId(null); setLastJob(null);
+    setPhaseErr(null);
+    const assetName = createForm.assetName?.trim();
+    if (!assetName) {
+      setPhaseErr("Please enter an asset name.");
+      return;
+    }
+    try {
+      const validateRes = await fetch(`${BACKEND}/validate-asset?name=${encodeURIComponent(assetName)}`);
+      const validateData = await validateRes.json() as { valid: boolean; message?: string; suggestions?: string[] };
+      if (!validateData.valid) {
+        const suggestions = (validateData.suggestions ?? []).slice(0, 6).join(", ");
+        setPhaseErr((validateData.message ?? "We can't pull price for this asset.") + (suggestions ? ` Choose: ${suggestions}` : ""));
+        return;
+      }
+    } catch {
+      setPhaseErr("Could not validate asset. Please choose a supported asset from the list.");
+      return;
+    }
+    setPhase("creating");
+    setActiveJobId(null);
+    setLastJob(null);
     try {
       const res = await fetch(`${BACKEND}/create-market`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...createForm, totalPayment: parseFloat(createForm.totalPayment) || 1 }),
+        body: JSON.stringify({
+          ...createForm,
+          totalPayment: parseFloat(createForm.totalPayment) || 1,
+          ...(userAddress && { mintMockUsdcTo: userAddress, mintMockUsdcAmount: 500 }),
+        }),
       });
       const data = await res.json() as { success: boolean; jobId?: string; error?: string };
       if (!res.ok || !data.success || !data.jobId) {
-        const e = data.error ?? `Server error ${res.status}`;
-        if (/insufficient|balance/i.test(e)) throw new Error("Insufficient agent funds. Top up at faucet.gokite.ai");
-        if (/revoked/i.test(e))              throw new Error("Agent is revoked. Set AGENT_REVOKED=false in .env");
-        if (/cap|limit/i.test(e))            throw new Error("Daily spending cap reached. Wait for UTC midnight reset.");
-        throw new Error(e);
+        const errMsg = data.error ?? `Server error ${res.status}`;
+        if (/insufficient|balance/i.test(errMsg)) throw new Error("Insufficient agent funds. Top up at faucet.gokite.ai");
+        if (/revoked/i.test(errMsg))              throw new Error("Agent is revoked. Set AGENT_REVOKED=false in .env");
+        if (/cap|limit/i.test(errMsg))            throw new Error("Daily spending cap reached. Wait for UTC midnight reset.");
+        throw new Error(errMsg);
       }
       setActiveJobId(data.jobId); setPhase("streaming");
     } catch (err) {
@@ -378,6 +491,23 @@ export default function App() {
     finally { setDevLoading(false); }
   }
 
+  async function handleMintMockUsdc() {
+    if (!selectedMarket || !userAddress) return;
+    setMintUsdcLoading(true);
+    try {
+      const res = await fetch(`${BACKEND}/markets/${selectedMarket.id}/mint-mock-usdc`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 100_000, to: userAddress }),
+      });
+      const data = await res.json() as { success?: boolean; amount?: number; error?: string };
+      if (!data.success) throw new Error(data.error ?? "Mint failed");
+      showToast(`Minted ${data.amount?.toLocaleString() ?? 100000} USDC to your wallet`, "success");
+      void fetchBalances();
+    } catch (err) { showToast(err instanceof Error ? err.message : String(err), "error"); }
+    finally { setMintUsdcLoading(false); }
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
   const noUsdc = userAddress && parseFloat(usdcBalance) === 0;
 
@@ -386,8 +516,11 @@ export default function App() {
       {/* ── Landing Page (full-screen overlay, shown on first visit) ── */}
       {showLanding && (
         <LandingPage
-          onEnter={() => setShowLanding(false)}
-          onTutorial={() => { setShowLanding(false); setShowTutorial(true); }}
+          onEnter={() => {
+            setShowLanding(false);
+            window.history.pushState(null, "", "/app");
+          }}
+          onTutorial={() => { setShowLanding(false); setShowTutorial(true); window.history.pushState(null, "", "/app"); }}
         />
       )}
 
@@ -401,7 +534,8 @@ export default function App() {
 
       <ToastBar toast={toast} />
 
-      {/* ── Nav ── */}
+      {/* ── Nav (hidden on landing so landing is a separate “route”) ── */}
+      {!showLanding && (
       <nav style={{
         position: "sticky", top: 0, zIndex: 100,
         background: "rgba(8,12,24,0.85)", backdropFilter: "blur(20px) saturate(1.5)",
@@ -411,19 +545,28 @@ export default function App() {
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 20px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {/* Brand */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            {view !== "dashboard" && (
+            {!showLanding && (
+              <button
+                onClick={goHome}
+                style={{ background: "none", border: "1px solid var(--border-2)", borderRadius: "var(--radius)", color: "var(--text-2)", padding: "6px 12px", fontSize: 12, fontWeight: 600, marginRight: 4, cursor: "pointer" }}
+                title="Back to home"
+              >
+                Home
+              </button>
+            )}
+            {view !== "dashboard" && !showLanding && (
               <button onClick={goDash} style={{ background: "none", border: "1px solid var(--border-2)", borderRadius: "var(--radius)", color: "var(--text-2)", padding: "6px 12px", fontSize: 12, fontWeight: 600, marginRight: 8, cursor: "pointer" }}>
                 ← Back
               </button>
             )}
-            <KiteLogo size={30} />
+            <AtlasLogo size={30} />
             <div>
               <div style={{ fontSize: 17, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.5px", lineHeight: 1 }}>
-                KITE{" "}
+                Atlas{" "}
                 <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: 14 }}>[ Synthetic Markets ]</span>
               </div>
               <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2, fontWeight: 500, letterSpacing: "0.3px" }}>
-                Pyth Oracles · x402 Protocol · Kite Testnet
+                Pyth Oracles · x402 Protocol · Testnet
               </div>
             </div>
           </div>
@@ -445,17 +588,18 @@ export default function App() {
           </div>
         </div>
       </nav>
+      )}
 
-      {/* ── Agent identity strip ── */}
-      <AgentIdentity backendUrl={BACKEND} />
+      {/* ── Agent identity strip (hidden on landing) ── */}
+      {!showLanding && <AgentIdentity backendUrl={BACKEND} />}
 
       {/* ══════════ DASHBOARD ══════════ */}
-      {view === "dashboard" && (
+      {!showLanding && view === "dashboard" && (
         <MarketsDashboard backendUrl={BACKEND} onSelect={goMarket} onCreateNew={goCreate} />
       )}
 
       {/* ══════════ MARKET VIEW ══════════ */}
-      {view === "market" && (
+      {!showLanding && view === "market" && (
         <>
           {marketLoading && !selectedMarket && (
             <div style={{ textAlign: "center", padding: "80px 20px", color: "var(--text-3)" }}>
@@ -512,15 +656,25 @@ export default function App() {
                   borderRadius: "var(--radius-lg)", fontSize: 13, color: "var(--text)",
                 }}>
                   <span style={{ fontSize: 18, flexShrink: 0 }}>⚠</span>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <strong style={{ color: "var(--gold)" }}>No testnet USDC in your wallet.</strong>
                     {" "}Get some from the{" "}
                     <a href="https://faucet.gokite.ai/" target="_blank" rel="noopener noreferrer"
-                      style={{ color: "var(--gold)", fontWeight: 700, textDecoration: "none" }}>Kite faucet ↗</a>
-                    {" "}— Approve &amp; Mint will fail without it.
+                      style={{ color: "var(--gold)", fontWeight: 700, textDecoration: "none" }}>testnet faucet ↗</a>
+                    {" "}or mint 100,000 USDC to your wallet (MockUSDC markets only):
+                    <div style={{ marginTop: 10 }}>
+                      <button type="button" onClick={() => void handleMintMockUsdc()} disabled={mintUsdcLoading} className="btn btn-primary" style={{ fontSize: 12, padding: "8px 14px" }}>
+                        {mintUsdcLoading ? <>↻ Minting…</> : "Mint 100,000 USDC"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
+
+              {/* Operations — placed high so users see activity without scrolling */}
+              <SectionHeader title="Recent activity" bracket="Operations"
+                sub="Mint, redeem, swap, and liquidity — from this session and previous visits" />
+              <OperationsTable operations={operations} />
 
               {/* Vault */}
               <SectionHeader title="Vault" bracket="Short Exposure"
@@ -532,14 +686,16 @@ export default function App() {
                   oraclePrice={selectedMarket.oraclePrice}
                   assetSymbol={selectedMarket.assetSymbol}
                   signer={signer}
-                  onSuccess={() => { void fetchSelectedMarket(selectedMarket.id); void fetchBalances(); }}
+                  onSuccess={(msg) => { if (msg) showToast(msg, "success"); void fetchSelectedMarket(selectedMarket.id); void fetchBalances(); }}
+                  onOperationRecord={(op) => recordOperation(selectedMarket.id, op)}
                 />
                 <RedeemForm
                   vaultAddress={selectedMarket.contracts.syntheticVault}
                   oraclePrice={selectedMarket.oraclePrice}
                   assetSymbol={selectedMarket.assetSymbol}
                   signer={signer}
-                  onSuccess={() => { void fetchSelectedMarket(selectedMarket.id); void fetchBalances(); }}
+                  onSuccess={(msg) => { if (msg) showToast(msg, "success"); void fetchSelectedMarket(selectedMarket.id); void fetchBalances(); }}
+                  onOperationRecord={(op) => recordOperation(selectedMarket.id, op)}
                 />
               </div>
 
@@ -554,7 +710,7 @@ export default function App() {
               {selectedMarket.contracts.synthPool && (
                 <>
                   <SectionHeader title="AMM Pool" bracket="Long Exposure"
-                    sub={`Swap USDC ↔ ${selectedMarket.assetSymbol} · earn 1% fees as LP`} />
+                    sub={`Swap USDC ↔ ${selectedMarket.assetSymbol} · earn 0.5% fees as LP (0.5% to vault)`} />
                   <PoolPanel
                     poolAddress={selectedMarket.contracts.synthPool}
                     usdcAddress={selectedMarket.contracts.usdc}
@@ -566,6 +722,7 @@ export default function App() {
                     backendUrl={BACKEND}
                     marketId={selectedMarket.id}
                     onSuccess={() => { void fetchSelectedMarket(selectedMarket.id); void fetchBalances(); }}
+                    onOperationRecord={(op) => recordOperation(selectedMarket.id, op)}
                   />
                 </>
               )}
@@ -581,6 +738,14 @@ export default function App() {
                     <div style={{ padding: "10px 14px", background: "var(--surface-2)", border: "1px solid var(--gold-border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--gold)", display: "flex", gap: 10 }}>
                       <span>⏱</span>
                       <span>On-chain oracle has a <strong>2-hour staleness threshold</strong>. If stale, all transactions revert. Use Refresh below.</span>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Mint 100,000 USDC to connected wallet</div>
+                      <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>MockUSDC markets only. Any connected wallet can request mint to their address.</p>
+                      <button onClick={() => void handleMintMockUsdc()} disabled={mintUsdcLoading || !userAddress} className="btn btn-ghost btn-sm">
+                        {mintUsdcLoading ? <>↻ Minting…</> : "Mint 100,000 USDC"}
+                      </button>
                     </div>
 
                     <div>
@@ -622,7 +787,7 @@ export default function App() {
       )}
 
       {/* ══════════ CREATE ══════════ */}
-      {view === "create" && (
+      {!showLanding && view === "create" && (
         <div style={{ maxWidth: 680, margin: "0 auto" }}>
           {/* Hero */}
           <div style={{
@@ -636,7 +801,7 @@ export default function App() {
               </div>
               <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.7, margin: 0 }}>
                 The autonomous agent pays the x402 fee, researches Pyth oracle feeds,
-                and deploys all contracts on Kite Testnet — fully autonomous, no wallet needed.
+                and deploys all contracts on testnet — fully autonomous, no wallet needed.
               </p>
             </div>
 
@@ -652,11 +817,18 @@ export default function App() {
               ))}
             </div>
 
+            {x402Disabled && (
+              <div style={{ padding: "12px 16px", marginBottom: 24, background: "var(--gold-dim)", border: "1px solid var(--gold-border)", borderRadius: "var(--radius-lg)", fontSize: 13, color: "var(--gold)", fontWeight: 600, display: "flex", alignItems: "center", gap: 10 }}>
+                <span>🧪</span>
+                <span>Payment disabled (X402_DISABLE=true) — create-market runs without x402 payment. Testing mode.</span>
+              </div>
+            )}
+
             {/* x402 scope pills */}
             <div style={{ padding: "12px 14px", background: "var(--accent-dim)", border: "1px solid var(--accent-border)", borderRadius: "var(--radius-lg)", marginBottom: 24 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 8 }}>x402 Payment Details</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 8 }}>x402 Payment Details{x402Disabled ? " (skipped)" : ""}</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {[["Scope","market.create"],["Network","Kite Testnet"],["Token","USDT"],["Per-req cap","$10"],["Daily cap","$50"]].map(([l,v]) => (
+                {[["Scope","market.create"],["Network","Testnet"],["Token",x402TokenLabel],["Per-req cap",`$${x402PerRequestCap}`],["Daily cap",`$${x402DailyCap}`]].map(([l,v]) => (
                   <div key={l} style={{ display: "flex", gap: 4, alignItems: "center", fontSize: 11 }}>
                     <span style={{ color: "var(--text-3)" }}>{l}:</span>
                     <span style={{ color: "var(--text)", fontWeight: 600, background: "var(--surface-2)", padding: "1px 7px", borderRadius: 20, border: "1px solid var(--border-2)" }}>{v}</span>
@@ -680,15 +852,15 @@ export default function App() {
               </div>
             )}
 
-            {phaseErr && <ErrorBanner message={phaseErr} />}
+            {phaseErr && <ErrorBanner message={phaseErr} paymentTokenLabel={x402TokenLabel} />}
 
             {/* Form */}
             {(phase === "idle" || phase === "failed") && (
               <form onSubmit={(e) => void handleCreate(e)}>
-                <Field label="Asset Name"        value={createForm.assetName}        onChange={(v) => setCreateForm((f) => ({ ...f, assetName: v }))}        placeholder="Gold, Bitcoin, Silver, Oil…" />
-                <Field label="Token Symbol"       value={createForm.assetSymbol}      onChange={(v) => setCreateForm((f) => ({ ...f, assetSymbol: v }))}      placeholder="sGLD, sBTC, sXAG…" />
-                <Field label="Description"        value={createForm.assetDescription} onChange={(v) => setCreateForm((f) => ({ ...f, assetDescription: v }))} placeholder="Describe the real-world asset…" />
-                <Field label="Agent Fee (USDT)" type="number" value={createForm.totalPayment} onChange={(v) => setCreateForm((f) => ({ ...f, totalPayment: v }))} hint="Paid autonomously via x402 — no wallet confirmation required" />
+                <Field label="Asset Name" value={createForm.assetName} onChange={(v) => setCreateForm((f) => ({ ...f, assetName: v }))} placeholder="e.g. Gold, Silver, Bitcoin" hint="Must be an asset we can pull from our data sources (Pyth). Symbol and description fill automatically when it matches." />
+                <Field label="Token Symbol"       value={resolvedCreateAsset ? resolvedCreateAsset.tokenSymbol : ""} onChange={(v) => setCreateForm((f) => ({ ...f, assetSymbol: v }))} placeholder="Select asset above" readOnly />
+                <Field label="Description"        value={resolvedCreateAsset ? resolvedCreateAsset.description : ""} onChange={(v) => setCreateForm((f) => ({ ...f, assetDescription: v }))} placeholder="Select asset above" readOnly />
+                <Field label={`Agent Fee (${x402TokenLabel})`} type="number" min="0" value={createForm.totalPayment} onChange={(v) => setCreateForm((f) => ({ ...f, totalPayment: v }))} hint="Paid autonomously via x402 — no wallet confirmation required" />
 
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", background: "var(--green-dim)", border: "1px solid var(--green-border)", borderRadius: "var(--radius)", marginBottom: 16, fontSize: 12, color: "var(--green)", fontWeight: 600 }}>
                   <span>🤖</span> Agent pays autonomously via x402 — you don&apos;t sign anything
@@ -722,6 +894,7 @@ export default function App() {
           usdcBalance={usdcBalance}
           synthBalance={synthBalance}
           onSuccess={() => { void fetchSelectedMarket(selectedMarket.id); void fetchBalances(); }}
+          onOperationRecord={(op) => recordOperation(selectedMarket.id, op)}
         />
       )}
     </>

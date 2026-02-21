@@ -9,7 +9,7 @@
  *   1. Agent builds EIP-3009 authorization struct
  *   2. Agent signs with its own private key (ethers.Wallet.signTypedData)
  *   3. Payload is base64-encoded as X-Payment header
- *   4. Backend calls Pieverse facilitator to settle on Kite Testnet
+ *   4. Backend settles on testnet
  */
 
 import { ethers } from "ethers";
@@ -72,7 +72,7 @@ export async function getAgentIdentity(): Promise<AgentIdentity> {
   // getAddress() is derived locally from private key — no network call
   const address   = wallet.address;
   const timestamp = new Date().toISOString();
-  const message   = `Kite Autonomous Agent | ${address} | ${timestamp}`;
+  const message   = `Atlas Autonomous Agent | ${address} | ${timestamp}`;
   const signature = await wallet.signMessage(message);
   return { address, signature, message, timestamp };
 }

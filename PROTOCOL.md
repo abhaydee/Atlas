@@ -1,7 +1,7 @@
 # Oracle-Backed Synthetic Asset Protocol
 
 > Permissionless oracle listings with self-insuring AMM pools.  
-> Powered by **Kite AI Agent × x402 × Switchboard × Kite L1 Testnet**
+> Powered by **Atlas × x402 × Switchboard × Testnet**
 
 ---
 
@@ -14,7 +14,7 @@ Frontend (React + Vite + ethers v6)
     ↓  REST API
 Backend (Express + ethers v6)
     ↓  deploy + read contracts
-Kite L1 Testnet (EVM)
+Testnet (EVM)
     ├── OracleAggregator.sol    ← price feed (agent-discovered URLs via job runner)
     ├── OracleReader.sol        ← normalises price → 1e18
     ├── SyntheticToken.sol      ← ERC-20 minted/burned by Vault
@@ -25,7 +25,7 @@ Kite L1 Testnet (EVM)
 
 | Bucket          | Share | Purpose                             |
 |-----------------|-------|-------------------------------------|
-| Research Fee    | 40%   | Kite AI agent data-source discovery |
+| Research Fee    | 40%   | Atlas agent data-source discovery |
 | Oracle Funding  | 40%   | Fund Switchboard feed incentives    |
 | Deploy Buffer   | 20%   | Gas costs for contract deployment   |
 
@@ -61,9 +61,9 @@ kite-ai/
 │   │   │   ├── MintForm.tsx
 │   │   │   └── RedeemForm.tsx
 │   │   ├── lib/abis.ts
-│   │   └── lib/x402.ts        ← native x402 EIP-3009 signer (no Kite Agent Passport)
+│   │   └── lib/x402.ts        ← native x402 EIP-3009 signer
 │   └── package.json
-└── src/                       ← existing Kite agent (unchanged)
+└── src/                       ← optional trade agent
 ```
 
 ---
@@ -73,7 +73,7 @@ kite-ai/
 ### Prerequisites
 
 - Node.js >= 18
-- MetaMask (or any EIP-1193 wallet) with Kite Testnet added
+- MetaMask (or any EIP-1193 wallet) with testnet added
 - Testnet tokens from https://faucet.gokite.ai/
 
 ---
@@ -87,14 +87,14 @@ cp backend/.env.example backend/.env
 Edit `backend/.env`:
 
 ```env
-# Kite Testnet RPC — verify at https://testnet.kitescan.ai/
+# Testnet RPC — verify at explorer
 RPC_URL=https://rpc.testnet.gokite.ai
 CHAIN_ID=2410
 
 # Your deployer private key (wallet: 0x1a5de860035E2E388140345a0F15897A19A92DB8)
 PRIVATE_KEY=0x...
 
-# Testnet stablecoin (Test USDT on Kite)
+# Testnet stablecoin
 USDC_ADDRESS=0x0fF5393387ad2f9f691FD6Fd28e07E3969e27e63
 
 # OpenRouter for AI research (get free key at https://openrouter.ai)
@@ -108,7 +108,7 @@ cp frontend/.env.example frontend/.env
 # VITE_BACKEND_URL=http://localhost:3000  (already set)
 ```
 
-> **Note:** `CHAIN_ID` and `RPC_URL` for Kite Testnet — check the current values
+> **Note:** `CHAIN_ID` and `RPC_URL` for testnet — check the current values
 > at https://testnet.kitescan.ai/ under "Network" settings.
 
 ---
@@ -162,25 +162,25 @@ Open: http://localhost:5173
 
 ### Step 5 — Create a market (x402 payment)
 
-**Option A: Via browser wallet (no Kite Agent Passport needed)**
+**Option A: Via browser wallet**
 
 1. Open http://localhost:5173
-2. Connect MetaMask → switch to Kite Testnet (Chain ID 2410)
+2. Connect MetaMask → switch to testnet (correct Chain ID)
 3. Get testnet USDT from https://faucet.gokite.ai/
 4. Fill in the **Create Market** form (e.g. Asset: **Rubies**, Symbol: **sRUBY**)
 5. Click **Create Market (x402)**
 6. A payment confirmation card appears — review the amount and payee
 7. Click **Sign & Pay** — MetaMask prompts for an EIP-712 signature (no transaction, just a signature)
-8. Backend receives the `X-Payment` header, calls Pieverse facilitator to settle on Kite, then deploys contracts
+8. Backend receives the `X-Payment` header, settles on testnet, then deploys contracts
 
-**Option B: Via Kite Trade Agent**
+**Option B: Via trade agent**
 
 1. Ensure backend is running (`npm run protocol:backend`)
 2. Run the trade agent: `npm run dev`
-3. Connect Kite MCP (OAuth via Kite Portal when prompted)
-4. Fund your Kite wallet with testnet USDT from https://faucet.gokite.ai/
+3. Connect MCP (OAuth when prompted)
+4. Fund your wallet with testnet USDT from the faucet
 5. Type: `create synthetic market for Rubies with 10 USDT payment`
-6. The agent pays via Kite Agent Passport, backend settles via Pieverse, deploys contracts
+6. The agent pays via x402, backend settles, deploys contracts
 
 **Option C: Demo mode (no payment)**
 
@@ -189,10 +189,10 @@ Set `X402_DISABLE=true` in `backend/.env` to allow create-market without payment
 ---
 
 Creating a market will:
-- Settle payment on Kite via Pieverse facilitator (real testnet USDT to `PAYEE_ADDRESS`)
+- Settle payment on testnet (USDT to `PAYEE_ADDRESS`)
 - Split fee: 40% research, 40% oracle, 20% deployment buffer
 - Run AI research (OpenRouter) to discover data sources (URL + JSONPath)
-- Deploy `OracleAggregator`, `SyntheticToken`, `OracleReader`, `SyntheticVault` on Kite Testnet
+- Deploy `OracleAggregator`, `SyntheticToken`, `OracleReader`, `SyntheticVault` on testnet
 - Fetch initial price from research URLs and update OracleAggregator
 - Transfer SyntheticToken ownership to Vault
 
@@ -200,7 +200,7 @@ Creating a market will:
 
 ### Step 6 — Mint synthetic tokens
 
-1. Connect MetaMask (add Kite Testnet, ensure USDC balance)
+1. Connect MetaMask (add testnet, ensure USDC balance)
 2. Enter USDC amount in the **Mint** form
 3. Click **Approve & Mint** (two transactions: approve + mint)
 
@@ -321,7 +321,7 @@ Fetches price from research data sources (url + jsonPath), parses, and calls `up
 
 ---
 
-## Kite Testnet Info
+## Testnet Info
 
 | Property   | Value                                           |
 |------------|-------------------------------------------------|
@@ -337,10 +337,10 @@ Fetches price from research data sources (url + jsonPath), parses, and calls `up
 | Issue | Fix |
 |-------|-----|
 | `Artifact not found` | Run `cd contracts && npm run compile` first |
-| `RPC_URL not set` | Fill in `backend/.env` with Kite RPC |
+| `RPC_URL not set` | Fill in `backend/.env` with testnet RPC |
 | `PRIVATE_KEY not set` | Add deployer private key to `backend/.env` |
 | `Stale oracle` | Prices auto-refresh every 5min. Call `POST /update-oracle` manually or set `ORACLE_INTERVAL_MS` |
-| `Wrong network` | Switch MetaMask to Kite Testnet (Chain ID 2410) |
-| `EIP-3009 not supported` | Token does not support native x402. Use `X402_DISABLE=true` and Kite Agent Passport instead |
-| MetaMask shows wrong network | Add Kite Testnet to MetaMask with correct Chain ID and RPC |
+| `Wrong network` | Switch MetaMask to testnet (correct Chain ID) |
+| `EIP-3009 not supported` | Token does not support native x402. Use `X402_DISABLE=true` to skip payment |
+| MetaMask shows wrong network | Add testnet to MetaMask with correct Chain ID and RPC |
 | USDC balance 0 | Get testnet tokens from https://faucet.gokite.ai/ |

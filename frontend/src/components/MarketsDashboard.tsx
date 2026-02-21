@@ -219,7 +219,7 @@ export function MarketsDashboard({ backendUrl, onSelect, onCreateNew }: {
             </span>
           </div>
           <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 6, fontWeight: 500 }}>
-            Click any market to trade · Powered by Pyth Network · All contracts on Kite Testnet
+            Click any market to trade · Powered by Pyth Network · All contracts on testnet
           </div>
         </div>
         <button onClick={onCreateNew} className="btn btn-primary" style={{ borderRadius: "var(--radius)", padding: "10px 20px" }}>

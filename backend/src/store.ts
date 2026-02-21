@@ -43,6 +43,7 @@ export interface MarketRecord {
 export type JobStepName =
   | "payment"
   | "research"
+  | "compile_contracts"
   | "deploy_oracle"
   | "deploy_token"
   | "deploy_vault"
@@ -50,6 +51,7 @@ export type JobStepName =
   | "oracle_update"
   | "seed_pool"
   | "spawn_agents"
+  | "mint_mock_usdc"
   | "done";
 
 export type JobStepStatus = "pending" | "running" | "success" | "failed" | "skipped";
@@ -155,24 +157,26 @@ export function splitFee(totalPayment: number): FeeAllocation {
 const jobs = new Map<string, JobRecord>();
 
 const STEP_LABELS: Record<JobStepName, string> = {
-  payment:       "x402 Payment",
-  research:      "AI Research",
-  deploy_oracle: "Deploy OracleAggregator",
-  deploy_token:  "Deploy SyntheticToken",
-  deploy_vault:  "Deploy SyntheticVault",
-  deploy_pool:   "Deploy SynthPool",
-  oracle_update: "Initialize Oracle Price",
-  seed_pool:     "Seed AMM Liquidity",
-  spawn_agents:  "Spawn AI Agents",
-  done:          "Market Live",
+  payment:          "x402 Payment",
+  research:         "AI Research",
+  compile_contracts: "Compile contracts",
+  deploy_oracle:    "Deploy OracleAggregator",
+  deploy_token:     "Deploy SyntheticToken",
+  deploy_vault:     "Deploy SyntheticVault",
+  deploy_pool:      "Deploy SynthPool",
+  oracle_update:    "Initialize Oracle Price",
+  seed_pool:        "Seed AMM Liquidity",
+  spawn_agents:     "Spawn AI Agents",
+  mint_mock_usdc:   "Mint mock USDC to you",
+  done:             "Market Live",
 };
 
 export function createJob(id: string): JobRecord {
   const steps: JobStep[] = (
     [
-      "payment", "research",
+      "payment", "research", "compile_contracts",
       "deploy_oracle", "deploy_token", "deploy_vault", "deploy_pool",
-      "oracle_update", "seed_pool", "spawn_agents", "done",
+      "oracle_update", "seed_pool", "spawn_agents", "mint_mock_usdc", "done",
     ] as JobStepName[]
   ).map((name) => ({ name, label: STEP_LABELS[name], status: "pending" as JobStepStatus }));
 

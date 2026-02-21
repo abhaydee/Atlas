@@ -4,6 +4,7 @@ interface AgentData {
   address: string; signature: string; message: string;
   timestamp: string; network: string; chainId: number;
   spendStats: { spent24h: number; dailyCap: number; perRequestCap: number; revoked: boolean };
+  tokenLabel?: string;
 }
 
 const EXPLORER = "https://testnet.kitescan.ai";
@@ -82,7 +83,7 @@ export function AgentIdentity({ backendUrl }: { backendUrl: string }) {
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-3)", marginBottom: 4 }}>
             <span style={{ fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px" }}>24h Spend</span>
             <span style={{ fontFamily: "JetBrains Mono, monospace", color: isWarn ? barColor : "var(--text-2)", fontWeight: 600 }}>
-              ${data.spendStats.spent24h.toFixed(2)} / ${data.spendStats.dailyCap} USDT
+              ${data.spendStats.spent24h.toFixed(2)} / ${data.spendStats.dailyCap} ${data.tokenLabel ?? "USDT"}
             </span>
           </div>
           <div style={{ height: 5, background: "var(--surface-3)", borderRadius: 3, overflow: "hidden" }}>

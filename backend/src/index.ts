@@ -20,6 +20,7 @@ import cors    from "cors";
 import dotenv  from "dotenv";
 import path    from "path";
 import fs      from "fs";
+import { execSync } from "child_process";
 import { ethers } from "ethers";
 
 import { researchAsset }                              from "./agent.js";
@@ -27,6 +28,7 @@ import { deployProtocol, updateAggregatorPrice }      from "./deployer.js";
 import { runOracleUpdate }                            from "./oracle-runner.js";
 import { resolveFeedEntry, getBenchmarksSymbol,
          fetchPythHistory }                           from "./pyth-provider.js";
+import { getSupportedAssets, validateAsset }          from "./supported-assets.js";
 import { addMarket, getMarket, getAllMarkets,
          removeMarket, splitFee,
          createJob, getJob, updateJobStep,
@@ -46,7 +48,8 @@ dotenv.config();
 const PORT           = parseInt(process.env.PORT      || "3000", 10);
 const BACKEND_URL    = process.env.BACKEND_URL        || `http://localhost:${PORT}`;
 const PAYEE_ADDRESS  = process.env.PAYEE_ADDRESS      || "0x1a5de860035E2E388140345a0F15897A19A92DB8";
-const TOKEN_ASSET    = "0x0fF5393387ad2f9f691FD6Fd28e07E3969e27e63";
+// Token for x402 create-market payment. Default: testnet stablecoin. Set to USDC_ADDRESS to use USDC for fees.
+const TOKEN_ASSET    = process.env.X402_TOKEN_ADDRESS || process.env.USDC_ADDRESS || "0x0fF5393387ad2f9f691FD6Fd28e07E3969e27e63";
 const TOKEN_DECIMALS = 6;
 const X402_DISABLE   = process.env.X402_DISABLE === "true";
 
@@ -188,21 +191,33 @@ function loadLegacyDeployed(): void {
 
 async function runMarketCreationJob(
   job: JobRecord,
-  opts: { assetName: string; assetSymbol: string; assetDescription: string; totalPayment: number }
+  opts: {
+    assetName: string;
+    assetSymbol: string;
+    assetDescription: string;
+    totalPayment: number;
+    mintMockUsdcTo?: string;
+    mintMockUsdcAmount?: number;
+  }
 ): Promise<void> {
-  const { assetName, assetSymbol, assetDescription, totalPayment } = opts;
+  const { assetName, assetSymbol, assetDescription, totalPayment, mintMockUsdcTo, mintMockUsdcAmount = 500 } = opts;
 
   try {
     // ── Step 1: x402 Payment FIRST ────────────────────────────────────────
     updateJobStep(job, "payment", { status: "running" });
-    const feeAllocation = splitFee(totalPayment);
+    const paymentForFee = Math.max(0, totalPayment);
+    const feeAllocation = splitFee(paymentForFee);
     let paymentTxHash: string | undefined;
 
     if (!X402_DISABLE) {
-      console.log(`[job:${job.id}] Signing x402 payment (${totalPayment} USDT)...`);
-      assertCanSpend(totalPayment, "create-market");
+      const paymentUsd = Math.max(0, totalPayment);
+      if (paymentUsd <= 0) {
+        throw new Error("Agent fee must be greater than 0 when x402 is enabled.");
+      }
+      console.log(`[job:${job.id}] Signing x402 payment (${paymentUsd} USDT)...`);
+      assertCanSpend(paymentUsd, "create-market");
 
-      const amountRaw = BigInt(Math.round(totalPayment * 10 ** TOKEN_DECIMALS));
+      const amountRaw = BigInt(Math.round(paymentUsd * 10 ** TOKEN_DECIMALS));
       const { xPaymentHeader, log: payLogBase } = await signAgentPayment({
         tokenAddress: TOKEN_ASSET,
         payTo:        PAYEE_ADDRESS,
@@ -216,12 +231,12 @@ async function runMarketCreationJob(
       if (!settle.success) throw new Error(`x402 settlement failed: ${settle.error}`);
 
       paymentTxHash  = settle.txHash;
-      recordSpend(totalPayment, "create-market");
+      recordSpend(paymentUsd, "create-market");
       job.paymentLog = { ...payLogBase, txHash: paymentTxHash, status: "success" };
 
       updateJobStep(job, "payment", {
         status: "success", txHash: paymentTxHash,
-        detail: `${totalPayment} USDT settled on Kite Testnet`,
+        detail: `${paymentUsd} USDT settled on testnet`,
       });
     } else {
       updateJobStep(job, "payment", { status: "skipped", detail: "X402_DISABLE=true" });
@@ -234,6 +249,27 @@ async function runMarketCreationJob(
       status: "success",
       detail: `${research.dataSources.length} source(s) → ${research.suggestedFeedName}`,
     });
+
+    // ── Step 2b: Optional — compile contracts (so deploy uses latest Solidity) ─
+    const compileBeforeDeploy = process.env.COMPILE_CONTRACTS_BEFORE_DEPLOY === "true";
+    updateJobStep(job, "compile_contracts", { status: compileBeforeDeploy ? "running" : "pending" });
+    if (compileBeforeDeploy) {
+      const contractsDir = path.resolve(__dirname, "../../contracts");
+      try {
+        execSync("npx hardhat compile", {
+          cwd: contractsDir,
+          stdio: "pipe",
+          encoding: "utf-8",
+        });
+        updateJobStep(job, "compile_contracts", { status: "success", detail: "Artifacts up to date" });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        updateJobStep(job, "compile_contracts", { status: "failed", detail: msg });
+        throw new Error(`Contract compile failed: ${msg}`);
+      }
+    } else {
+      updateJobStep(job, "compile_contracts", { status: "skipped", detail: "Set COMPILE_CONTRACTS_BEFORE_DEPLOY=true to compile before deploy" });
+    }
 
     // ── Steps 3-6: Deploy contracts ───────────────────────────────────────
     updateJobStep(job, "deploy_oracle", { status: "running" });
@@ -312,6 +348,43 @@ async function runMarketCreationJob(
       });
     }
 
+    // ── Step 10: Optional — mint mock USDC to user (when using MockUSDC) ───
+    updateJobStep(job, "mint_mock_usdc", { status: "running" });
+    if (mintMockUsdcTo && ethers.isAddress(mintMockUsdcTo)) {
+      const wallet = getWalletOrNull();
+      if (wallet) {
+        try {
+          const amount = Math.max(0, Number(mintMockUsdcAmount) || 500);
+          const rawAmount = BigInt(Math.round(amount * 1e6));
+          const usdc = new ethers.Contract(
+            contracts.usdc,
+            ["function mint(address to, uint256 amount) external"],
+            wallet
+          );
+          const tx = await usdc.mint(mintMockUsdcTo, rawAmount) as ethers.ContractTransactionResponse;
+          await tx.wait();
+          updateJobStep(job, "mint_mock_usdc", {
+            status: "success",
+            detail: `Minted ${amount} mock USDC to ${mintMockUsdcTo.slice(0, 10)}…`,
+            txHash: tx.hash,
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          updateJobStep(job, "mint_mock_usdc", {
+            status: "skipped",
+            detail: `Not MockUSDC or error: ${msg.slice(0, 60)}`,
+          });
+        }
+      } else {
+        updateJobStep(job, "mint_mock_usdc", { status: "skipped", detail: "Deployer wallet not configured" });
+      }
+    } else {
+      updateJobStep(job, "mint_mock_usdc", {
+        status: "skipped",
+        detail: "Optional — pass mintMockUsdcTo (address) in create-market to receive mock USDC",
+      });
+    }
+
     // ── Store & complete ──────────────────────────────────────────────────
     const market: MarketRecord = {
       id: job.id,
@@ -344,6 +417,36 @@ app.get("/markets", (_req: Request, res: Response): void => {
 });
 
 /**
+ * GET /supported-assets
+ * Returns list of assets we can pull from data sources (Pyth), with standard display name, token symbol, description.
+ */
+app.get("/supported-assets", (_req: Request, res: Response): void => {
+  res.json({ assets: getSupportedAssets() });
+});
+
+/**
+ * GET /validate-asset?name=Silver
+ * Validates that we can pull price data for the given asset. Returns standard fields if valid, or error + suggestions.
+ */
+app.get("/validate-asset", async (req: Request, res: Response): Promise<void> => {
+  const name = (req.query.name as string)?.trim() ?? "";
+  if (!name) {
+    res.status(400).json({ valid: false, message: "Missing asset name.", suggestions: getSupportedAssets().map((a) => a.displayName) });
+    return;
+  }
+  try {
+    const result = await validateAsset(name);
+    res.json(result);
+  } catch {
+    res.status(500).json({
+      valid: false,
+      message: "Validation failed. Please choose a supported asset.",
+      suggestions: getSupportedAssets().map((a) => a.displayName),
+    });
+  }
+});
+
+/**
  * POST /create-market
  * Autonomous: no wallet required. Returns jobId immediately.
  */
@@ -353,12 +456,16 @@ app.post("/create-market", (req: Request, res: Response): void => {
     assetSymbol      = "sSYN",
     assetDescription = "",
     totalPayment     = 10,
+    mintMockUsdcTo,
+    mintMockUsdcAmount,
   } = req.body as {
     assetName?: string; assetSymbol?: string;
     assetDescription?: string; totalPayment?: number;
+    mintMockUsdcTo?: string; mintMockUsdcAmount?: number;
   };
 
-  const paymentAmount = Number(totalPayment) || 10;
+  let paymentAmount = Number(totalPayment) || 10;
+  if (paymentAmount < 0) paymentAmount = 0;
 
   try {
     assertCanSpend(paymentAmount, "create-market-preflight");
@@ -370,7 +477,14 @@ app.post("/create-market", (req: Request, res: Response): void => {
   const jobId = Date.now().toString();
   const job   = createJob(jobId);
 
-  void runMarketCreationJob(job, { assetName, assetSymbol, assetDescription, totalPayment: paymentAmount });
+  void runMarketCreationJob(job, {
+    assetName,
+    assetSymbol,
+    assetDescription,
+    totalPayment: paymentAmount,
+    mintMockUsdcTo: mintMockUsdcTo?.trim() || undefined,
+    mintMockUsdcAmount: mintMockUsdcAmount != null ? Number(mintMockUsdcAmount) : undefined,
+  });
 
   res.json({
     success: true,
@@ -419,7 +533,10 @@ app.get("/agent-identity", async (_req: Request, res: Response): Promise<void> =
   try {
     const identity   = await getAgentIdentity();
     const spendStats = getSpendStats();
-    res.json({ ...identity, spendStats, network: "kite-testnet", chainId: 2368 });
+    const usdcAddr   = process.env.USDC_ADDRESS || "";
+    const defaultLabel = usdcAddr && TOKEN_ASSET === usdcAddr ? "USDC" : "USDT";
+    const tokenLabel = process.env.X402_TOKEN_LABEL || defaultLabel;
+    res.json({ ...identity, spendStats, tokenLabel, network: "kite-testnet", chainId: 2368 });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
@@ -515,8 +632,36 @@ app.get("/markets/:id/pool", async (req: Request, res: Response): Promise<void> 
   }
 });
 
+/** Collateral ratio 1.5 (must match SyntheticVault). */
+const COLLATERAL_RATIO_18 = 15n * 10n ** 17n;
+
 /**
- * POST /markets/:id/oracle  — trigger oracle update (Pyth or URL fallback)
+ * Returns true if the vault would be undercollateralised at the given price (1e18 scale).
+ * Used to block Refresh Oracle from pushing a price that would break mints.
+ */
+async function wouldVaultBeUndercollateralised(
+  provider: ethers.Provider,
+  vaultAddress: string,
+  syntheticTokenAddress: string,
+  priceDollars: number
+): Promise<boolean> {
+  const vault = new ethers.Contract(vaultAddress, VAULT_ABI, provider);
+  const token = new ethers.Contract(syntheticTokenAddress, ERC20_ABI, provider);
+  const [vaultBalance6, totalSupply18] = await Promise.all([
+    vault.getTVL() as Promise<bigint>,
+    token.totalSupply() as Promise<bigint>,
+  ]);
+  if (totalSupply18 === 0n) return false;
+  const price18 = BigInt(Math.round(priceDollars * 1e18));
+  const valueIn18 = (totalSupply18 * price18) / 10n ** 18n;
+  const required18 = (valueIn18 * COLLATERAL_RATIO_18) / 10n ** 18n;
+  const required6 = (required18 + 10n ** 11n) / 10n ** 12n;
+  return vaultBalance6 < required6;
+}
+
+/**
+ * POST /markets/:id/oracle  — trigger oracle update (Pyth or URL fallback).
+ * Refuses to push a price that would make the vault undercollateralised.
  */
 app.post("/markets/:id/oracle", async (req: Request, res: Response): Promise<void> => {
   const market = getMarket(req.params.id);
@@ -528,11 +673,41 @@ app.post("/markets/:id/oracle", async (req: Request, res: Response): Promise<voi
   if (!hasSource) {
     res.status(400).json({ error: "No data sources (Pyth or URL) for this market" }); return;
   }
+  const provider = getProviderOrNull();
+  if (!provider) { res.status(503).json({ error: "RPC not configured" }); return; }
+
   try {
+    // 1) Fetch new price without updating on-chain
+    const dryRun = await runOracleUpdate({
+      aggregatorAddress: market.contracts.oracleAggregator,
+      research: research!,
+      assetName: market.assetName,
+      skipUpdate: true,
+    });
+    if (!dryRun.success || dryRun.price == null) {
+      res.status(502).json({ success: false, error: dryRun.error ?? "Failed to fetch price" });
+      return;
+    }
+    // 2) Refuse to push if vault would become undercollateralised
+    const under = await wouldVaultBeUndercollateralised(
+      provider,
+      market.contracts.syntheticVault,
+      market.contracts.syntheticToken,
+      dryRun.price
+    );
+    if (under) {
+      res.status(400).json({
+        success: false,
+        error: `Updating to $${dryRun.price.toFixed(2)} would make the vault undercollateralised. Add USDC to the vault (e.g. seed-pool or mint) or wait for a lower price.`,
+      });
+      return;
+    }
+    // 3) Push the price on-chain
     const result = await runOracleUpdate({
       aggregatorAddress: market.contracts.oracleAggregator,
       research: research!,
       assetName: market.assetName,
+      usePrice: { price: dryRun.price, source: dryRun.source ?? "unknown" },
     });
     result.success
       ? res.json({ success: true, price: result.price, source: result.source })
@@ -648,6 +823,52 @@ app.post("/markets/:id/seed-pool", async (req: Request, res: Response): Promise<
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+/**
+ * POST /markets/:id/mint-mock-usdc
+ * When the market uses MockUSDC, deployer can mint to any address (for testing/faucet).
+ * Body: { amount: number, to?: string }  — amount in human units (e.g. 1000), to defaults to deployer.
+ */
+app.post("/markets/:id/mint-mock-usdc", async (req: Request, res: Response): Promise<void> => {
+  const market = getMarket(req.params.id);
+  if (!market) { res.status(404).json({ error: "Market not found" }); return; }
+
+  const amount = parseFloat(String((req.body as { amount?: unknown }).amount ?? 0));
+  const to = (req.body as { to?: string }).to?.trim();
+  if (!amount || amount <= 0) {
+    res.status(400).json({ error: "amount required (e.g. { amount: 1000 })" }); return;
+  }
+
+  let wallet: ReturnType<typeof getWalletOrNull>;
+  try { wallet = getWalletOrNull(); } catch { wallet = null; }
+  if (!wallet) { res.status(503).json({ error: "Deployer wallet not configured" }); return; }
+
+  const recipient = to && ethers.isAddress(to) ? to : wallet.address;
+  const rawAmount = BigInt(Math.round(amount * 1e6));
+
+  try {
+    const usdc = new ethers.Contract(
+      market.contracts.usdc,
+      ["function mint(address to, uint256 amount) external"],
+      wallet
+    );
+    const tx = await usdc.mint(recipient, rawAmount) as ethers.ContractTransactionResponse;
+    await tx.wait();
+    res.json({
+      success: true,
+      amount,
+      to: recipient,
+      txHash: tx.hash,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("revert") || msg.includes("not implemented")) {
+      res.status(400).json({ error: "This market does not use MockUSDC — mint not available" });
+      return;
+    }
     res.status(500).json({ error: msg });
   }
 });
@@ -833,12 +1054,32 @@ app.delete("/agents/:id", (req: Request, res: Response): void => {
  * GET /x402-status
  */
 app.get("/x402-status", (_req: Request, res: Response): void => {
+  const usdcAddr = process.env.USDC_ADDRESS || "";
+  const defaultLabel = usdcAddr && TOKEN_ASSET === usdcAddr ? "USDC" : "USDT";
+  const spendStats = getSpendStats();
   res.json({
     mode:                        X402_DISABLE ? "disabled" : "autonomous-agent",
     createMarketRequiresPayment: !X402_DISABLE,
     payeeAddress:                 PAYEE_ADDRESS,
     tokenAsset:                   TOKEN_ASSET,
+    tokenLabel:                   process.env.X402_TOKEN_LABEL || defaultLabel,
+    perRequestCap:                spendStats.perRequestCap,
+    dailyCap:                     spendStats.dailyCap,
     backendUrl:                   BACKEND_URL,
+  });
+});
+
+/**
+ * GET /config — Backend config (e.g. effective USDC address for wallet / .env).
+ * usdcAddress: from first deployed market if any, else USDC_ADDRESS env.
+ */
+app.get("/config", (_req: Request, res: Response): void => {
+  const markets = getAllMarkets();
+  const usdcAddress = markets[0]?.contracts?.usdc || process.env.USDC_ADDRESS || "";
+  res.json({
+    usdcAddress,
+    useMockUsdc: process.env.USE_MOCK_USDC === "true",
+    chainId:     process.env.CHAIN_ID || "2368",
   });
 });
 
@@ -938,7 +1179,7 @@ setTimeout(async () => {
 app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
-║  KITE Synthetic Markets — AI Agent Backend               ║
+║  Atlas Synthetic Markets — AI Agent Backend              ║
 ║  http://localhost:${PORT}                                   ║
 ╠═══════════════════════════════════════════════════════════╣
 ║  GET  /markets               (all live markets)          ║

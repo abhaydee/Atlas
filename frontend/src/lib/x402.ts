@@ -1,9 +1,9 @@
 /**
- * Native x402 payment client — no Kite Agent Passport required.
+ * Native x402 payment client.
  *
  * Uses EIP-3009 (transferWithAuthorization) signed with the user's browser wallet.
  * The signed payload is base64-encoded and sent as the X-Payment header.
- * The backend then calls the Pieverse facilitator to settle on Kite.
+ * The backend then settles on testnet via EIP-3009.
  *
  * Flow:
  *   1. Backend returns 402 with payment details
@@ -29,8 +29,8 @@ const EIP3009_TYPES = {
   ],
 };
 
-// Kite testnet chain ID
-const KITE_TESTNET_CHAIN_ID = 2368;
+// Testnet chain ID
+const TESTNET_CHAIN_ID = 2368;
 
 const TOKEN_ABI = [
   "function name()     view returns (string)",
@@ -115,10 +115,10 @@ export async function buildXPaymentHeader(
   const chainId   = Number(network.chainId);
   const from      = await signer.getAddress();
 
-  // Guard: warn if not on Kite testnet
-  if (chainId !== KITE_TESTNET_CHAIN_ID) {
+  // Guard: warn if not on testnet
+  if (chainId !== TESTNET_CHAIN_ID) {
     throw new Error(
-      `Wrong network. Please switch MetaMask to Kite Testnet (chain ID ${KITE_TESTNET_CHAIN_ID}).\n` +
+      `Wrong network. Please switch MetaMask to testnet (chain ID ${TESTNET_CHAIN_ID}).\n` +
       `Currently connected to chain ID ${chainId}.`
     );
   }
