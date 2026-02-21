@@ -1,0 +1,11 @@
+# Atlas backend — deploy from repo root
+# Set env vars in Railway dashboard: PRIVATE_KEY, RPC_URL, USDC_ADDRESS, PAYEE_ADDRESS, BACKEND_URL (your Railway URL), etc.
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.backend"
+
+[deploy]
+startCommand = "node dist/index.js"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

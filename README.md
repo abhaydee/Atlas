@@ -102,6 +102,41 @@ Final smart contract addresses on testnet:
 
 ---
 
+## Deploy (frontend + backend)
+
+Backend and frontend are wired for **Railway** (backend) and **Vercel** (frontend). Env stays in sync by setting the backend URL in both places.
+
+### 1. Deploy backend (Railway)
+
+From the **repo root**:
+
+```bash
+npx railway login
+npx railway init   # create new project or link existing
+npx railway up     # build with Dockerfile.backend and deploy
+```
+
+In [Railway Dashboard](https://railway.app/dashboard) → your project → **Variables**, add all vars from `backend/.env` (at least `PRIVATE_KEY`, `RPC_URL`, `USDC_ADDRESS`, `PAYEE_ADDRESS`, `OPENROUTER_API_KEY`, `FACILITATOR_URL`). Set **`BACKEND_URL`** to your Railway service URL (e.g. `https://your-app.railway.app`). Set **`RAILWAY_DOCKERFILE_PATH`** = `Dockerfile.backend` so Railway uses the root Dockerfile. Redeploy if you add vars.
+
+Copy the backend URL (e.g. `https://atlas-backend-production-xxxx.up.railway.app`).
+
+### 2. Deploy frontend (Vercel)
+
+```bash
+cd frontend
+npx vercel --yes
+```
+
+In [Vercel Dashboard](https://vercel.com/dashboard) → your project → **Settings → Environment Variables**, add:
+
+- **`VITE_BACKEND_URL`** = your Railway backend URL (from step 1)
+
+Redeploy the frontend (Deployments → ⋮ → Redeploy) so the build picks up `VITE_BACKEND_URL`.
+
+Your app URL is the Vercel URL (e.g. `https://your-app.vercel.app`).
+
+---
+
 ## Quick Start
 
 ### 1. Install dependencies

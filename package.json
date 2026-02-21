@@ -15,7 +15,9 @@
     "protocol:compile": "cd contracts && npm install && npm run compile",
     "protocol:deploy": "cd contracts && npm run deploy",
     "protocol:backend": "cd backend && npm install && npm run dev",
-    "protocol:frontend": "cd frontend && npm install && npm run dev"
+    "protocol:frontend": "cd frontend && npm install && npm run dev",
+    "deploy:backend": "npx @railway/cli up",
+    "deploy:frontend": "cd frontend && npx vercel --prod"
   },
   "keywords": [
     "kite",

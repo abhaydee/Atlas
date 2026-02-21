@@ -1,0 +1,21 @@
+# Atlas backend — build contracts then backend (must run from repo root)
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Contracts (needed for artifacts at runtime)
+COPY contracts/package*.json contracts/
+COPY contracts/ contracts/
+RUN cd contracts && npm ci && npm run compile
+
+# Backend
+COPY backend/package*.json backend/
+COPY backend/ backend/
+RUN cd backend && npm ci && npm run build
+
+# Ensure deployed-markets.json exists (backend writes to it at runtime)
+RUN echo "[]" > /app/backend/deployed-markets.json
+
+WORKDIR /app/backend
+EXPOSE 3000
+CMD ["node", "dist/index.js"]
