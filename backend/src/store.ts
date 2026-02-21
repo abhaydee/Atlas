@@ -48,6 +48,8 @@ export type JobStepName =
   | "deploy_vault"
   | "deploy_pool"
   | "oracle_update"
+  | "seed_pool"
+  | "spawn_agents"
   | "done";
 
 export type JobStepStatus = "pending" | "running" | "success" | "failed" | "skipped";
@@ -160,12 +162,18 @@ const STEP_LABELS: Record<JobStepName, string> = {
   deploy_vault:  "Deploy SyntheticVault",
   deploy_pool:   "Deploy SynthPool",
   oracle_update: "Initialize Oracle Price",
-  done:          "Complete",
+  seed_pool:     "Seed AMM Liquidity",
+  spawn_agents:  "Spawn AI Agents",
+  done:          "Market Live",
 };
 
 export function createJob(id: string): JobRecord {
   const steps: JobStep[] = (
-    ["payment", "research", "deploy_oracle", "deploy_token", "deploy_vault", "deploy_pool", "oracle_update", "done"] as JobStepName[]
+    [
+      "payment", "research",
+      "deploy_oracle", "deploy_token", "deploy_vault", "deploy_pool",
+      "oracle_update", "seed_pool", "spawn_agents", "done",
+    ] as JobStepName[]
   ).map((name) => ({ name, label: STEP_LABELS[name], status: "pending" as JobStepStatus }));
 
   const job: JobRecord = {

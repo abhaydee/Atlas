@@ -3,52 +3,67 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kite [ Synthetic Markets ]</title>
+    <title>Kite — Synthetic Markets</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <style>
-      *, *::before, *::after { box-sizing: border-box; }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
       :root {
-        /* Kite Brand Palette */
-        --bg:           #F5F2EA;
-        --surface:      #FFFFFF;
-        --surface-2:    #F0EDE5;
-        --border:       #E0D9CE;
-        --border-hover: #C8BFB0;
+        /* ── Backgrounds ── */
+        --bg:        #080C18;
+        --surface:   #0D1120;
+        --surface-2: #111827;
+        --surface-3: #182032;
+        --surface-4: #1E2A3F;
 
-        /* Accent – gold/amber (bracket highlights) */
-        --accent:       #C8963A;
-        --accent-light: rgba(200,150,58,0.12);
-        --accent-dark:  #A57828;
+        /* ── Borders ── */
+        --border:    #1C2540;
+        --border-2:  #263050;
+        --border-3:  #344070;
 
-        /* CTA – near black (primary buttons) */
-        --cta:          #1C1C1E;
-        --cta-hover:    #333333;
+        /* ── Primary Accent — teal/mint ── */
+        --accent:      #00C9A7;
+        --accent-2:    #00E5BF;
+        --accent-dim:  rgba(0,201,167,0.10);
+        --accent-glow: rgba(0,201,167,0.18);
+        --accent-border: rgba(0,201,167,0.30);
 
-        /* Semantic */
-        --green:        #2A7D52;
-        --green-light:  rgba(42,125,82,0.1);
-        --red:          #B83232;
-        --red-light:    rgba(184,50,50,0.1);
-        --blue:         #2563EB;
+        /* ── Secondary — gold/amber ── */
+        --gold:     #F59E0B;
+        --gold-dim: rgba(245,158,11,0.10);
+        --gold-border: rgba(245,158,11,0.30);
 
-        /* Typography */
-        --text:         #1C1C1E;
-        --text-2:       #3A3830;
-        --muted:        #78736A;
-        --muted-2:      #A09890;
+        /* ── Semantic ── */
+        --green:     #10D982;
+        --green-dim: rgba(16,217,130,0.10);
+        --green-border: rgba(16,217,130,0.30);
+        --red:       #F53B4A;
+        --red-dim:   rgba(245,59,74,0.10);
+        --red-border: rgba(245,59,74,0.30);
+        --blue:      #3B82F6;
 
-        /* Layout */
-        --radius:       10px;
-        --radius-lg:    14px;
-        --shadow-sm:    0 1px 3px rgba(28,24,20,0.08), 0 1px 2px rgba(28,24,20,0.04);
-        --shadow-md:    0 4px 12px rgba(28,24,20,0.10), 0 2px 4px rgba(28,24,20,0.06);
+        /* ── Typography ── */
+        --text:   #E8EAF2;
+        --text-2: #9AA3BF;
+        --text-3: #5A6480;
+        --text-4: #3A4360;
 
-        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        /* ── Layout ── */
+        --radius:    8px;
+        --radius-lg: 12px;
+        --radius-xl: 18px;
+
+        /* ── Shadows ── */
+        --shadow-card: 0 1px 2px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.5);
+        --shadow-glow: 0 0 24px rgba(0,201,167,0.06);
+        --shadow-hover: 0 0 0 1px var(--accent-border), 0 4px 24px rgba(0,201,167,0.12);
+
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
         font-size: 14px;
         -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
 
       body {
@@ -56,63 +71,252 @@
         background: var(--bg);
         color: var(--text);
         min-height: 100vh;
+        /* Subtle radial gradient in top-right */
+        background-image:
+          radial-gradient(ellipse 60% 40% at 80% 0%, rgba(0,201,167,0.04) 0%, transparent 70%),
+          radial-gradient(ellipse 50% 30% at 20% 100%, rgba(245,158,11,0.03) 0%, transparent 70%);
+        background-attachment: fixed;
       }
 
       #root {
-        max-width: 1040px;
+        max-width: 1100px;
         margin: 0 auto;
-        padding: 0 20px 48px;
+        padding: 0 20px 64px;
       }
 
-      /* Scrollbar */
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      /* ── Scrollbar ── */
+      ::-webkit-scrollbar { width: 5px; height: 5px; }
       ::-webkit-scrollbar-track { background: var(--bg); }
-      ::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
+      ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: var(--border-3); }
 
-      /* Selection */
-      ::selection { background: var(--accent-light); color: var(--text); }
+      /* ── Selection ── */
+      ::selection { background: var(--accent-dim); color: var(--accent-2); }
 
-      /* Animations */
-      @keyframes spin  { to { transform: rotate(360deg); } }
-      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
-      @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      /* ── Global input / button resets ── */
+      input, textarea, select, button { font-family: inherit; }
+      input { color: var(--text); }
+      input::placeholder { color: var(--text-3); }
+      button { cursor: pointer; }
+
+      /* ── Input focus ring ── */
+      input:focus-visible, textarea:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--accent-border);
+        border-color: var(--accent-border) !important;
+      }
+
+      /* ── Number font ── */
+      .num { font-family: 'JetBrains Mono', monospace; }
+      .mono { font-family: 'JetBrains Mono', monospace; }
+
+      /* ── Animations ── */
+      @keyframes spin        { to { transform: rotate(360deg); } }
+      @keyframes pulse       { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+      @keyframes glow-pulse  { 0%,100% { box-shadow: 0 0 6px var(--accent); } 50% { box-shadow: 0 0 14px var(--accent), 0 0 28px rgba(0,201,167,0.3); } }
+      @keyframes slideUp     { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+      @keyframes fadeIn      { from { opacity:0; } to { opacity:1; } }
       @keyframes shimmer {
-        0%   { background-position: -200% center; }
-        100% { background-position:  200% center; }
+        0%   { background-position: -400px 0; }
+        100% { background-position: 400px 0; }
+      }
+      @keyframes float {
+        0%, 100% { transform: translateY(0px) scale(1); }
+        33%       { transform: translateY(-18px) scale(1.02); }
+        66%       { transform: translateY(8px) scale(0.98); }
+      }
+      @keyframes float-slow {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50%       { transform: translateY(-24px) rotate(3deg); }
+      }
+      @keyframes reveal-up {
+        from { opacity: 0; transform: translateY(32px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes gradient-x {
+        0%, 100% { background-position: 0% 50%; }
+        50%       { background-position: 100% 50%; }
+      }
+      @keyframes scan-line {
+        0%   { transform: translateY(-100%); opacity: 0; }
+        10%  { opacity: 0.6; }
+        90%  { opacity: 0.6; }
+        100% { transform: translateY(100%); opacity: 0; }
+      }
+      @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0; }
+      }
+      @keyframes card-reveal {
+        from { opacity: 0; transform: translateY(40px) scale(0.96); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      @keyframes orb-drift {
+        0%   { transform: translate(0, 0) scale(1); }
+        25%  { transform: translate(30px, -20px) scale(1.05); }
+        50%  { transform: translate(-10px, 30px) scale(0.95); }
+        75%  { transform: translate(-30px, -10px) scale(1.03); }
+        100% { transform: translate(0, 0) scale(1); }
+      }
+      @keyframes number-up {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes step-in {
+        from { opacity: 0; transform: translateX(30px); }
+        to   { opacity: 1; transform: translateX(0); }
+      }
+      @keyframes step-out {
+        from { opacity: 1; transform: translateX(0); }
+        to   { opacity: 0; transform: translateX(-30px); }
       }
 
-      /* Card hover */
-      .kite-card-hover {
-        transition: box-shadow 0.18s, border-color 0.18s, transform 0.12s;
-      }
-      .kite-card-hover:hover {
-        box-shadow: var(--shadow-md);
-        border-color: var(--border-hover);
-        transform: translateY(-1px);
+      /* ── Gradient border trick ── */
+      .grad-border {
+        position: relative;
+        background-clip: padding-box;
       }
 
-      /* Input base */
-      input, textarea, select {
+      /* ── Tab base ── */
+      .tab-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-3);
+        font-size: 13px;
+        font-weight: 600;
+        padding: 8px 16px;
+        cursor: pointer;
+        position: relative;
+        transition: color 0.15s;
         font-family: inherit;
-        font-size: 14px;
-        color: var(--text);
+      }
+      .tab-btn.active {
+        color: var(--accent);
+      }
+      .tab-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0; right: 0;
+        height: 2px;
+        background: var(--accent);
+        border-radius: 2px 2px 0 0;
+      }
+      .tab-btn:hover:not(.active) { color: var(--text-2); }
+
+      /* ── Card ── */
+      .card {
         background: var(--surface);
         border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-card);
+      }
+
+      /* ── Glow card (hover) ── */
+      .card-hover {
+        transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+      }
+      .card-hover:hover {
+        border-color: var(--accent-border);
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-2px);
+      }
+
+      /* ── Button variants ── */
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        border: none; border-radius: var(--radius);
+        font-family: inherit; font-weight: 600; cursor: pointer;
+        transition: all 0.15s;
+      }
+      .btn-primary {
+        background: var(--accent); color: #000;
+        padding: 11px 20px; font-size: 14px;
+      }
+      .btn-primary:hover:not(:disabled) { background: var(--accent-2); }
+      .btn-primary:disabled { background: var(--surface-3); color: var(--text-3); cursor: not-allowed; }
+
+      .btn-ghost {
+        background: transparent; color: var(--text-2);
+        border: 1px solid var(--border-2);
+        padding: 8px 16px; font-size: 13px;
+      }
+      .btn-ghost:hover { border-color: var(--border-3); color: var(--text); }
+
+      .btn-sm {
+        padding: 7px 14px; font-size: 12px;
+      }
+
+      /* ── Badge ── */
+      .badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 10px; font-weight: 700; padding: 2px 8px;
+        border-radius: 20px; text-transform: uppercase; letter-spacing: 0.4px;
+      }
+      .badge-accent  { background: var(--accent-dim);  color: var(--accent);  border: 1px solid var(--accent-border); }
+      .badge-green   { background: var(--green-dim);   color: var(--green);   border: 1px solid var(--green-border); }
+      .badge-red     { background: var(--red-dim);     color: var(--red);     border: 1px solid var(--red-border); }
+      .badge-gold    { background: var(--gold-dim);    color: var(--gold);    border: 1px solid var(--gold-border); }
+      .badge-muted   { background: var(--surface-3);   color: var(--text-3);  border: 1px solid var(--border); }
+
+      /* ── Divider ── */
+      .divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+      /* ── Landing gradient text ── */
+      .gradient-text {
+        background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, #fff 100%);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: gradient-x 4s ease infinite;
+      }
+      .gradient-text-gold {
+        background: linear-gradient(135deg, var(--accent) 0%, var(--gold) 60%, var(--accent) 100%);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: gradient-x 5s ease infinite;
+      }
+      /* ── Landing grid pattern ── */
+      .grid-bg {
+        background-image:
+          linear-gradient(rgba(0,201,167,0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,201,167,0.04) 1px, transparent 1px);
+        background-size: 60px 60px;
+      }
+      /* ── Tutorial progress dot ── */
+      .tut-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--border-2);
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+      .tut-dot.active {
+        background: var(--accent);
+        box-shadow: 0 0 8px var(--accent);
+        width: 24px;
+        border-radius: 4px;
+      }
+      .tut-dot.done {
+        background: var(--accent);
+        opacity: 0.4;
+      }
+
+      /* ── Pill input ── */
+      .field-input {
+        width: 100%;
+        background: var(--surface-2);
+        border: 1px solid var(--border-2);
         border-radius: var(--radius);
+        padding: 11px 14px;
+        font-size: 15px;
+        color: var(--text);
         outline: none;
         transition: border-color 0.15s, box-shadow 0.15s;
       }
-      input:focus, textarea:focus, select:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px var(--accent-light);
-      }
-      input::placeholder { color: var(--muted-2); }
-
-      /* Button base */
-      button { font-family: inherit; cursor: pointer; }
-
-      /* Monospace */
-      .mono { font-family: 'SF Mono', 'Fira Code', 'Fira Mono', monospace; }
+      .field-input:hover { border-color: var(--border-3); }
     </style>
   </head>
   <body>

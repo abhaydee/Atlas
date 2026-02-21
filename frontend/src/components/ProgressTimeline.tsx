@@ -293,10 +293,10 @@ function PaymentLogRow({
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const card: React.CSSProperties = {
-  background:   "var(--surface)",
-  border:       "1px solid var(--border)",
+  background:   "var(--surface-2)",
+  border:       "1px solid var(--border-2)",
   borderRadius: "var(--radius-lg)",
   padding:      "18px 22px",
   marginBottom: 16,
-  boxShadow:    "var(--shadow-sm)",
+  boxShadow:    "var(--shadow-card)",
 };

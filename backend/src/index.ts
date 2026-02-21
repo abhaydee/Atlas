@@ -37,6 +37,9 @@ import { decodePaymentHeader, settlePayment }         from "./facilitator.js";
 import { getAgentIdentity, signAgentPayment }         from "./agent-signer.js";
 import { assertCanSpend, recordSpend, getSpendStats } from "./spending-guard.js";
 import { getProviderOrNull, getWalletOrNull }         from "./provider.js";
+import { spawnAgent, getAllAgents, getAgent,
+         subscribeToAgentActivity,
+         type AgentRole }                             from "./agent-trader.js";
 
 dotenv.config();
 
@@ -54,7 +57,12 @@ app.use(express.json());
 // ── ABI fragments ─────────────────────────────────────────────────────────────
 
 const ORACLE_ABI = ["function getLatestPrice() view returns (uint256)"];
-const VAULT_ABI  = ["function getTVL() view returns (uint256)"];
+const VAULT_ABI  = [
+  "function getTVL() view returns (uint256)",
+  "function getExcessCollateral() view returns (uint256)",
+  "function accumulatedFees() view returns (uint256)",
+  "function MINT_FEE_BPS() view returns (uint256)",
+];
 const ERC20_ABI  = [
   "function totalSupply() view returns (uint256)",
   "function decimals()    view returns (uint8)",
@@ -267,6 +275,43 @@ async function runMarketCreationJob(
       updateJobStep(job, "oracle_update", { status: "skipped", detail: "No data sources" });
     }
 
+    // ── Step 8: Check pool seed readiness ─────────────────────────────────
+    updateJobStep(job, "seed_pool", { status: "running" });
+    if (contracts.synthPool && getWalletOrNull()) {
+      updateJobStep(job, "seed_pool", {
+        status: "success",
+        detail:  "Pool deployed — Market Maker agent will seed it automatically once wallet is funded",
+      });
+    } else {
+      updateJobStep(job, "seed_pool", {
+        status: "skipped",
+        detail: "Deployer wallet not configured (PRIVATE_KEY missing)",
+      });
+    }
+
+    // ── Step 9: Spawn one market-maker + one arbitrageur agent ────────────
+    updateJobStep(job, "spawn_agents", { status: "running" });
+    if (getWalletOrNull()) {
+      try {
+        const mmAgent  = spawnAgent({ marketId: job.id, role: "market-maker",  usdcBudget: 100 });
+        const arbAgent = spawnAgent({ marketId: job.id, role: "arbitrageur",   usdcBudget: 100 });
+        updateJobStep(job, "spawn_agents", {
+          status: "success",
+          detail: `Market Maker (${mmAgent.id.slice(-6)}) + Arbitrageur (${arbAgent.id.slice(-6)}) spawned and watching`,
+        });
+      } catch (err) {
+        updateJobStep(job, "spawn_agents", {
+          status: "skipped",
+          detail: `Agent spawn failed: ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
+    } else {
+      updateJobStep(job, "spawn_agents", {
+        status: "skipped",
+        detail: "Deployer wallet not configured",
+      });
+    }
+
     // ── Store & complete ──────────────────────────────────────────────────
     const market: MarketRecord = {
       id: job.id,
@@ -396,25 +441,29 @@ app.get("/markets/:id/data", async (req: Request, res: Response): Promise<void> 
     const vault  = new ethers.Contract(market.contracts.syntheticVault,  VAULT_ABI,  provider);
     const token  = new ethers.Contract(market.contracts.syntheticToken,  ERC20_ABI,  provider);
 
-    const [rawPrice, tvlRaw, supplyRaw] = await Promise.all([
-      oracle.getLatestPrice() as Promise<bigint>,
-      vault.getTVL()          as Promise<bigint>,
-      token.totalSupply()     as Promise<bigint>,
+    const [rawPrice, tvlRaw, supplyRaw, excessRaw, feesRaw] = await Promise.all([
+      oracle.getLatestPrice()        as Promise<bigint>,
+      vault.getTVL()                 as Promise<bigint>,
+      token.totalSupply()            as Promise<bigint>,
+      vault.getExcessCollateral().catch(() => 0n) as Promise<bigint>,
+      vault.accumulatedFees().catch(() => 0n)     as Promise<bigint>,
     ]);
 
     res.json({
-      id:            market.id,
-      assetName:     market.assetName,
-      assetSymbol:   market.assetSymbol,
-      oraclePrice:   (Number(rawPrice)  / 1e18).toFixed(6),
-      tvl:           (Number(tvlRaw)    / 1e6).toFixed(6),
-      totalSupply:   (Number(supplyRaw) / 1e18).toFixed(6),
-      contracts:     market.contracts,
-      research:      market.research,
-      feeAllocation: market.feeAllocation,
-      paymentLog:    market.paymentLog,
-      hasSynthPool:  Boolean(market.contracts.synthPool),
-      updatedAt:     new Date().toISOString(),
+      id:                market.id,
+      assetName:         market.assetName,
+      assetSymbol:       market.assetSymbol,
+      oraclePrice:       (Number(rawPrice)   / 1e18).toFixed(6),
+      tvl:               (Number(tvlRaw)     / 1e6).toFixed(6),
+      totalSupply:       (Number(supplyRaw)  / 1e18).toFixed(6),
+      excessCollateral:  (Number(excessRaw)  / 1e6).toFixed(6),
+      accumulatedFees:   (Number(feesRaw)    / 1e6).toFixed(6),
+      contracts:         market.contracts,
+      research:          market.research,
+      feeAllocation:     market.feeAllocation,
+      paymentLog:        market.paymentLog,
+      hasSynthPool:      Boolean(market.contracts.synthPool),
+      updatedAt:         new Date().toISOString(),
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -685,6 +734,101 @@ app.post("/markets/:id/delete", (req: Request, res: Response): void => {
   res.json({ success: removed, id: req.params.id });
 });
 
+// ── Agent API ─────────────────────────────────────────────────────────────────
+
+/**
+ * GET /agents
+ * List all active autonomous agents and their states.
+ */
+app.get("/agents", (_req: Request, res: Response): void => {
+  res.json({ agents: getAllAgents() });
+});
+
+/**
+ * GET /agents/balance
+ * Returns the agent wallet's USDC balance (so frontend can show funding prompt).
+ */
+app.get("/agents/balance", async (_req: Request, res: Response): Promise<void> => {
+  const wallet = getWalletOrNull();
+  if (!wallet) { res.json({ address: null, usdcBalance: "0", funded: false }); return; }
+
+  const markets = getAllMarkets();
+  const usdcAddress = markets[0]?.contracts.usdc;
+  if (!usdcAddress) { res.json({ address: wallet.address, usdcBalance: "0", funded: false }); return; }
+
+  try {
+    const usdc    = new ethers.Contract(usdcAddress, ["function balanceOf(address) view returns (uint256)"], wallet);
+    const raw: bigint = await usdc.balanceOf(wallet.address) as bigint;
+    const human = (Number(raw) / 1e6).toFixed(4);
+    res.json({ address: wallet.address, usdcBalance: human, funded: Number(raw) >= 10 * 1e6 });
+  } catch (err) {
+    res.json({ address: wallet.address, usdcBalance: "0", funded: false, error: (err as Error).message });
+  }
+});
+
+/**
+ * GET /agents/stream  — SSE
+ * Real-time stream of all agent activity events.
+ */
+app.get("/agents/stream", (req: Request, res: Response): void => {
+  res.writeHead(200, {
+    "Content-Type":  "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection":    "keep-alive",
+    "Access-Control-Allow-Origin": "*",
+  });
+  // Send current state immediately
+  res.write(`data: ${JSON.stringify({ type: "init", agents: getAllAgents() })}\n\n`);
+
+  const unsub     = subscribeToAgentActivity((event) => { try { res.write(event); } catch { /* gone */ } });
+  const heartbeat = setInterval(() => { try { res.write(": heartbeat\n\n"); } catch { clearInterval(heartbeat); } }, 15_000);
+  req.on("close", () => { unsub(); clearInterval(heartbeat); });
+});
+
+/**
+ * POST /agents/spawn
+ * Body: { marketId, role: "market-maker" | "arbitrageur", usdcBudget? }
+ * Spawns a new autonomous agent for the specified market.
+ */
+app.post("/agents/spawn", (req: Request, res: Response): void => {
+  const { marketId, role, usdcBudget } = req.body as {
+    marketId?:   string;
+    role?:       AgentRole;
+    usdcBudget?: number;
+  };
+
+  if (!marketId || !role) {
+    res.status(400).json({ error: "marketId and role are required" });
+    return;
+  }
+  if (!["market-maker", "arbitrageur"].includes(role)) {
+    res.status(400).json({ error: "role must be 'market-maker' or 'arbitrageur'" });
+    return;
+  }
+  if (!getMarket(marketId)) {
+    res.status(404).json({ error: "Market not found" });
+    return;
+  }
+  if (!getWalletOrNull()) {
+    res.status(503).json({ error: "Deployer wallet not configured (PRIVATE_KEY missing)" });
+    return;
+  }
+
+  const agent = spawnAgent({ marketId, role, usdcBudget: usdcBudget ?? 50 });
+  res.json({ success: true, agentId: agent.id, role: agent.role });
+});
+
+/**
+ * DELETE /agents/:id
+ * Stop and remove a running agent.
+ */
+app.delete("/agents/:id", (req: Request, res: Response): void => {
+  const agent = getAgent(req.params.id);
+  if (!agent) { res.status(404).json({ error: "Agent not found" }); return; }
+  agent.stop();
+  res.json({ success: true, id: req.params.id });
+});
+
 /**
  * GET /x402-status
  */
@@ -794,17 +938,22 @@ setTimeout(async () => {
 app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
-║  Oracle Synthetic Protocol — Multi-Market Agent Backend  ║
+║  KITE Synthetic Markets — AI Agent Backend               ║
 ║  http://localhost:${PORT}                                   ║
 ╠═══════════════════════════════════════════════════════════╣
 ║  GET  /markets               (all live markets)          ║
 ║  POST /create-market         (autonomous — no wallet)    ║
-║  GET  /job/:id/stream        (SSE progress)              ║
+║  GET  /job/:id/stream        (SSE job progress)          ║
 ║  GET  /agent-identity        (wallet + signature)        ║
 ║  GET  /markets/:id/data      (live price, TVL, supply)   ║
 ║  GET  /markets/:id/pool      (AMM reserves + quotes)     ║
 ║  POST /markets/:id/oracle    (update oracle)             ║
-║  POST /markets/:id/set-price (dev override)              ║
+║  POST /markets/:id/seed-pool (bootstrap liquidity)       ║
+╠═══════════════════════════════════════════════════════════╣
+║  GET  /agents                (active AI agents)          ║
+║  GET  /agents/stream         (SSE agent activity)        ║
+║  POST /agents/spawn          (spawn new agent)           ║
+║  DELETE /agents/:id          (stop agent)                ║
 ╚═══════════════════════════════════════════════════════════╝
   `);
 });

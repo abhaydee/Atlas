@@ -3,142 +3,137 @@ import { ethers } from "ethers";
 import { SYNTHETIC_VAULT_ABI, ERC20_ABI } from "../lib/abis.ts";
 
 interface Props {
-  vaultAddress: string;
-  usdcAddress:  string;
-  oraclePrice:  string;
-  assetSymbol:  string;
-  signer:       ethers.JsonRpcSigner | null;
-  onSuccess:    () => void;
+  vaultAddress: string; usdcAddress: string; oraclePrice: string;
+  assetSymbol: string; signer: ethers.JsonRpcSigner | null; onSuccess: () => void;
 }
 
 export function MintForm({ vaultAddress, usdcAddress, oraclePrice, assetSymbol, signer, onSuccess }: Props) {
-  const [usdcAmount, setUsdcAmount] = useState("");
-  const [status, setStatus]         = useState<"idle" | "approving" | "minting">("idle");
-  const [error, setError]           = useState<string | null>(null);
+  const [amount, setAmount] = useState("");
+  const [status, setStatus] = useState<"idle" | "approving" | "minting">("idle");
+  const [error,  setError]  = useState<string | null>(null);
 
-  const price = parseFloat(oraclePrice) || 0;
-  const estimatedSynth = price > 0 ? (parseFloat(usdcAmount) || 0) / price : 0;
+  const COLLATERAL_RATIO = 1.5; // must match contract (15n * 10n**17n)
+  const MINT_FEE_BPS     = 50;  // must match contract constant
+  const price        = parseFloat(oraclePrice) || 0;
+  const inputUsdc    = parseFloat(amount) || 0;
+  const feeUsdc      = (inputUsdc * MINT_FEE_BPS) / 10_000;
+  const usdcForSynth = inputUsdc - feeUsdc;
+  const estSynth     = price > 0 ? usdcForSynth / (price * COLLATERAL_RATIO) : 0;
+  const busy         = status !== "idle";
 
-  async function handleMint() {
-    if (!signer || !usdcAmount || parseFloat(usdcAmount) <= 0) return;
+  async function handle() {
+    if (!signer || !amount || parseFloat(amount) <= 0) return;
     setError(null);
-
     try {
-      const usdcContract  = new ethers.Contract(usdcAddress, ERC20_ABI, signer);
-      const vaultContract = new ethers.Contract(vaultAddress, SYNTHETIC_VAULT_ABI, signer);
-
-      const decimals: bigint  = await usdcContract.decimals();
-      const amountBig = ethers.parseUnits(usdcAmount, decimals);
-
-      // Check and set allowance
-      const userAddress = await signer.getAddress();
-      const allowance: bigint = await usdcContract.allowance(userAddress, vaultAddress);
-
-      if (allowance < amountBig) {
+      const usdc  = new ethers.Contract(usdcAddress, ERC20_ABI, signer);
+      const vault = new ethers.Contract(vaultAddress, SYNTHETIC_VAULT_ABI, signer);
+      const dec: bigint  = await usdc.decimals();
+      const big  = ethers.parseUnits(amount, dec);
+      const user = await signer.getAddress();
+      const allow: bigint = await usdc.allowance(user, vaultAddress);
+      if (allow < big) {
         setStatus("approving");
-        const approveTx = await usdcContract.approve(vaultAddress, amountBig);
-        await (approveTx as ethers.ContractTransactionResponse).wait();
+        await (await usdc.approve(vaultAddress, big) as ethers.ContractTransactionResponse).wait();
       }
-
       setStatus("minting");
-      const mintTx = await vaultContract.mint(amountBig);
-      await (mintTx as ethers.ContractTransactionResponse).wait();
-
-      setUsdcAmount("");
-      setStatus("idle");
-      onSuccess();
-    } catch (err: unknown) {
-      setError(parseContractError(err));
-      setStatus("idle");
+      await (await vault.mint(big) as ethers.ContractTransactionResponse).wait();
+      setAmount(""); setStatus("idle"); onSuccess();
+    } catch (err) {
+      setError(parseErr(err)); setStatus("idle");
     }
   }
 
+  const label = status === "approving" ? "Approving USDC…" : status === "minting" ? "Minting…" : !signer ? "Connect Wallet" : "Approve & Mint";
+
   return (
     <div style={card}>
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
-          Mint <span style={{ color: "var(--accent)" }}>[</span> {assetSymbol} <span style={{ color: "var(--accent)" }}>]</span>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.2px", marginBottom: 4 }}>
+          Mint <span style={{ color: "var(--accent)" }}>[ {assetSymbol} ]</span>
         </div>
-        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 3 }}>Deposit USDC → receive synthetic tokens</div>
+        <div style={{ fontSize: 11, color: "var(--text-3)" }}>Deposit USDC → receive synthetic tokens (short the asset)</div>
       </div>
 
-      <label style={labelStyle}>USDC Amount</label>
-      <input
-        type="number"
-        min="0"
-        step="any"
-        placeholder="0.00"
-        value={usdcAmount}
-        onChange={(e) => setUsdcAmount(e.target.value)}
-        style={inputStyle}
-        disabled={status !== "idle"}
+      <Label>USDC Amount</Label>
+      <input className="field-input" type="number" min="0" step="any" placeholder="0.00"
+        value={amount} onChange={(e) => setAmount(e.target.value)} disabled={busy}
+        style={{ marginBottom: 8 }}
       />
 
-      {price > 0 && parseFloat(usdcAmount) > 0 && (
-        <div style={hint}>
-          ≈ {estimatedSynth.toFixed(6)} {assetSymbol} at ${oraclePrice}
+      {price > 0 && inputUsdc > 0 && (
+        <div style={estimate}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+            <span style={{ color: "var(--text-3)" }}>Mint fee (0.5%)</span>
+            <span style={{ color: "var(--gold)", fontFamily: "JetBrains Mono, monospace", fontWeight: 600 }}>
+              −${feeUsdc.toFixed(4)} USDC
+            </span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+            <span style={{ color: "var(--text-3)" }}>Collateral deposited</span>
+            <span style={{ color: "var(--text-2)", fontFamily: "JetBrains Mono, monospace" }}>
+              ${usdcForSynth.toFixed(4)} USDC
+            </span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 6, borderTop: "1px solid var(--border)" }}>
+            <span style={{ color: "var(--text-2)", fontWeight: 600 }}>You receive</span>
+            <span style={{ color: "var(--text)", fontFamily: "JetBrains Mono, monospace", fontWeight: 700 }}>
+              {estSynth.toFixed(6)} {assetSymbol}
+            </span>
+          </div>
+          <div style={{ fontSize: 10, color: "var(--text-4)", marginTop: 5 }}>
+            Fee stays in vault as surplus collateral · enables arb redemptions
+          </div>
         </div>
       )}
 
-      {error && (
-        <div style={errorStyle}>
-          <span style={{ fontWeight: 700 }}>⚠ </span>{error}
-          {error.includes("stale") && (
-            <div style={{ marginTop: 5, fontSize: 11 }}>Use Dev Tools → Refresh Oracle to push a fresh price on-chain.</div>
-          )}
-          {error.includes("USDC") && (
-            <div style={{ marginTop: 5, fontSize: 11 }}>Get testnet USDC at <a href="https://faucet.gokite.ai" target="_blank" rel="noreferrer" style={{ color: "var(--red)", fontWeight: 700 }}>faucet.gokite.ai</a></div>
-          )}
-        </div>
-      )}
+      {error && <ErrorBox msg={error} hint={
+        error.includes("stale") ? "Stale oracle — use Dev Tools → Refresh Oracle, then retry." :
+        error.includes("USDC") || error.includes("balance") ? "Get testnet USDC at faucet.gokite.ai" : undefined
+      } />}
 
-      <button
-        onClick={handleMint}
-        disabled={!signer || !usdcAmount || status !== "idle"}
-        style={btnStyle(status !== "idle")}
-      >
-        {status === "approving"
-          ? <><span style={{ animation: "spin 1s linear infinite", display: "inline-block", marginRight: 6 }}>↻</span>Approving USDC…</>
-          : status === "minting"
-          ? <><span style={{ animation: "spin 1s linear infinite", display: "inline-block", marginRight: 6 }}>↻</span>Minting…</>
-          : !signer
-          ? "Connect Wallet to Mint"
-          : "Approve & Mint"}
+      <button onClick={handle} disabled={!signer || !amount || busy} className="btn btn-primary"
+        style={{ width: "100%", borderRadius: "var(--radius)", padding: "12px", fontSize: 14 }}>
+        {busy && <span style={{ animation: "spin 0.8s linear infinite", display: "inline-block" }}>↻</span>}
+        {label}
       </button>
     </div>
   );
 }
 
-function parseContractError(err: unknown): string {
+function parseErr(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
-  if (raw.includes("user rejected") || raw.includes("ACTION_REJECTED")) return "Transaction cancelled.";
-  if (raw.includes("stale price") || raw.includes("OracleReader: stale") || raw.includes("stale")) {
-    return "Oracle price is stale (>2h old). Use Dev Tools → Refresh Oracle, then retry.";
-  }
-  if (raw.includes("synthetic amount too small")) {
-    return "Amount too small — try a larger USDC amount.";
-  }
-  if (raw.includes("insufficient allowance") || raw.includes("ERC20: insufficient allowance")) {
-    return "Approval failed — please try again.";
-  }
-  if (raw.includes("insufficient balance") || raw.includes("ERC20: transfer amount exceeds balance")) {
-    return "Insufficient USDC balance in your wallet.";
-  }
-  const match = raw.match(/reason="([^"]+)"|revert reason: ([^\n]+)|execution reverted: ([^\n"]+)/i);
-  if (match) return match[1] ?? match[2] ?? match[3] ?? raw;
+  if (/user rejected|ACTION_REJECTED/i.test(raw)) return "Transaction cancelled.";
+  if (/stale/i.test(raw)) return "Oracle price is stale (>2h old). Refresh oracle via Dev Tools.";
+  if (/too small/i.test(raw)) return "Amount too small — try a larger value.";
+  if (/undercollateral/i.test(raw)) return "Vault undercollateralised — oracle may be stale. Refresh oracle in Dev Tools.";
+  if (/insufficient balance|transfer amount exceeds/i.test(raw)) return "Insufficient USDC balance.";
+  if (/insufficient allowance/i.test(raw)) return "Approval failed — try again.";
+  const m = raw.match(/reason="([^"]+)"|revert reason: ([^\n]+)|execution reverted: ([^\n"]+)/i);
+  if (m) return m[1] ?? m[2] ?? m[3] ?? raw;
   return raw.slice(0, 200);
 }
 
-const card: React.CSSProperties       = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: "20px 22px", marginBottom: 20, boxShadow: "var(--shadow-sm)" };
-const labelStyle: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 };
-const inputStyle: React.CSSProperties = { width: "100%", padding: "10px 14px", fontSize: 15, marginBottom: 8, boxSizing: "border-box" as const };
-const hint: React.CSSProperties       = { fontSize: 12, color: "var(--muted)", marginBottom: 12, padding: "8px 12px", background: "var(--surface-2)", borderRadius: "var(--radius)", border: "1px solid var(--border)" };
-const errorStyle: React.CSSProperties = { fontSize: 13, color: "var(--red)", marginBottom: 12, wordBreak: "break-word" as const, background: "var(--red-light)", border: "1px solid var(--red)", borderRadius: "var(--radius)", padding: "10px 14px", lineHeight: 1.5 };
-function btnStyle(disabled: boolean): React.CSSProperties {
-  return {
-    width: "100%", background: disabled ? "var(--border)" : "var(--cta)", color: disabled ? "var(--muted)" : "#fff",
-    border: "none", borderRadius: "var(--radius)", padding: "12px", fontSize: 14,
-    cursor: disabled ? "not-allowed" : "pointer", fontWeight: 700,
-    display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-  };
+function Label({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 7 }}>{children}</div>;
 }
+
+function ErrorBox({ msg, hint }: { msg: string; hint?: string }) {
+  return (
+    <div style={{ background: "var(--red-dim)", border: "1px solid var(--red-border)", borderRadius: "var(--radius)", padding: "10px 14px", fontSize: 12, color: "var(--red)", marginBottom: 12, lineHeight: 1.6 }}>
+      <div style={{ fontWeight: 700 }}>⚠ {msg}</div>
+      {hint && <div style={{ fontSize: 11, marginTop: 4, opacity: 0.85 }}>→ {hint}</div>}
+    </div>
+  );
+}
+
+const card: React.CSSProperties = {
+  background: "var(--surface)", border: "1px solid var(--border)",
+  borderRadius: "var(--radius-lg)", padding: "20px 22px", marginBottom: 20,
+  boxShadow: "var(--shadow-card)",
+};
+
+const estimate: React.CSSProperties = {
+  fontSize: 12, color: "var(--text-2)", marginBottom: 14,
+  padding: "8px 12px", background: "var(--surface-2)",
+  border: "1px solid var(--border)", borderRadius: "var(--radius)",
+};

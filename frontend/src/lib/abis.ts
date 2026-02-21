@@ -24,12 +24,16 @@ export const SYNTHETIC_VAULT_ABI = [
   "function mint(uint256 usdcAmount)",
   "function redeem(uint256 syntheticAmount)",
   "function getTVL() view returns (uint256)",
+  "function getExcessCollateral() view returns (uint256)",
   "function collateralRatio() view returns (uint256)",
+  "function MINT_FEE_BPS() view returns (uint256)",
+  "function accumulatedFees() view returns (uint256)",
   "function syntheticToken() view returns (address)",
   "function oracleReader() view returns (address)",
   "function usdc() view returns (address)",
   "event Minted(address indexed user, uint256 usdcIn, uint256 synthOut)",
   "event Redeemed(address indexed user, uint256 synthIn, uint256 usdcOut)",
+  "event FeeCollected(address indexed user, uint256 feeUsdc)",
 ];
 
 export const SYNTHETIC_TOKEN_ABI = [

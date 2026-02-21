@@ -90,40 +90,40 @@ export function PriceChart({
 
       const chart = createChart(el, {
         layout: {
-          background:  { type: ColorType.Solid, color: "#FFFFFF" },
-          textColor:   "#78736A",
-          fontFamily:  "Inter, system-ui, sans-serif",
+          background:  { type: ColorType.Solid, color: "#0D1120" },
+          textColor:   "#5A6480",
+          fontFamily:  "JetBrains Mono, monospace",
           fontSize:    11,
         },
         grid: {
-          vertLines: { color: "rgba(224,217,206,0.6)" },
-          horzLines: { color: "rgba(224,217,206,0.6)" },
+          vertLines: { color: "rgba(28,37,64,0.8)" },
+          horzLines: { color: "rgba(28,37,64,0.8)" },
         },
         crosshair: {
-          vertLine:   { color: "rgba(200,150,58,0.6)", width: 1, style: 3 },
-          horzLine:   { color: "rgba(200,150,58,0.6)", width: 1, style: 3 },
+          vertLine:   { color: "rgba(0,201,167,0.5)", width: 1, style: 3 },
+          horzLine:   { color: "rgba(0,201,167,0.5)", width: 1, style: 3 },
         },
         rightPriceScale: {
-          borderColor: "rgba(224,217,206,0.8)",
+          borderColor: "rgba(28,37,64,1)",
         },
         timeScale: {
-          borderColor:     "rgba(224,217,206,0.8)",
+          borderColor:     "rgba(28,37,64,1)",
           timeVisible:     cfg.resolution !== "D",
           secondsVisible:  false,
           fixLeftEdge:     true,
           fixRightEdge:    true,
         },
         width:  el.clientWidth,
-        height: 280,
+        height: 300,
       });
 
       const series = chart.addSeries(CandlestickSeries, {
-        upColor:          "#2A7D52",
-        downColor:        "#B83232",
-        borderUpColor:    "#2A7D52",
-        borderDownColor:  "#B83232",
-        wickUpColor:      "#2A7D52",
-        wickDownColor:    "#B83232",
+        upColor:          "#10D982",
+        downColor:        "#F53B4A",
+        borderUpColor:    "#10D982",
+        borderDownColor:  "#F53B4A",
+        wickUpColor:      "#10D982",
+        wickDownColor:    "#F53B4A",
       });
 
       // lightweight-charts v5 expects time as UTC seconds (number)
@@ -163,137 +163,62 @@ export function PriceChart({
   const isUp = (change?.pct ?? 0) >= 0;
 
   return (
-    <div style={wrapper}>
-      {/* Header row */}
-      <div style={headerRow}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
-            {symbol ?? assetSymbol}{" "}
-            <span style={{ color: "var(--accent)", fontWeight: 700 }}>[</span>
-            {" "}Price History{" "}
-            <span style={{ color: "var(--accent)", fontWeight: 700 }}>]</span>
-          </span>
+    <div style={{
+      background: "var(--surface)", border: "1px solid var(--border)",
+      borderRadius: "var(--radius-xl)", overflow: "hidden",
+      marginBottom: 20, boxShadow: "var(--shadow-card)",
+    }}>
+      {/* Header */}
+      <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 2 }}>
+              {symbol ?? assetSymbol} Price History
+            </div>
+            <div style={{ fontSize: 10, color: "var(--text-4)" }}>
+              Pyth Benchmarks · {RANGE_CONFIG[range].label} · {RANGE_CONFIG[range].resolution === "D" ? "Daily" : `${RANGE_CONFIG[range].resolution}m`} candles
+            </div>
+          </div>
           {change && !loading && (
-            <span style={{
-              fontSize: 12, fontWeight: 700,
-              color: isUp ? "var(--green)" : "var(--red)",
-              background: isUp ? "var(--green-light)" : "var(--red-light)",
-              border: `1px solid ${isUp ? "var(--green)" : "var(--red)"}`,
-              padding: "2px 8px", borderRadius: 20,
-            }}>
-              {isUp ? "+" : ""}{change.pct.toFixed(2)}%
-              <span style={{ fontSize: 11, fontWeight: 400, marginLeft: 4 }}>
-                ({isUp ? "+" : ""}${Math.abs(change.abs).toFixed(2)}) {RANGE_CONFIG[range].label}
-              </span>
+            <span className={`badge ${isUp ? "badge-green" : "badge-red"}`} style={{ fontSize: 11, padding: "3px 10px" }}>
+              {isUp ? "+" : ""}{change.pct.toFixed(2)}% · {isUp ? "+" : ""}${Math.abs(change.abs).toFixed(2)}
             </span>
           )}
         </div>
 
-        {/* Range selector */}
-        <div style={rangeRow}>
+        {/* Range buttons */}
+        <div style={{ display: "flex", gap: 4, background: "var(--surface-2)", padding: 4, borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
           {(["1D", "7D", "30D", "90D"] as Range[]).map((r) => (
-            <button
-              key={r}
-              onClick={() => setRange(r)}
-              style={r === range ? activeRangeBtn : rangeBtn}
-            >
-              {r}
-            </button>
+            <button key={r} onClick={() => setRange(r)} style={{
+              fontSize: 11, fontWeight: 700, padding: "5px 12px", border: "none",
+              borderRadius: "var(--radius)", cursor: "pointer", fontFamily: "inherit",
+              transition: "all 0.15s",
+              background: r === range ? "var(--surface-4)" : "transparent",
+              color: r === range ? "var(--accent)" : "var(--text-3)",
+              boxShadow: r === range ? "0 1px 3px rgba(0,0,0,0.3)" : "none",
+            }}>{r}</button>
           ))}
         </div>
       </div>
 
       {/* Chart area */}
-      <div style={{ position: "relative", minHeight: 280, borderRadius: "var(--radius)", overflow: "hidden", border: "1px solid var(--border)" }}>
+      <div style={{ position: "relative", minHeight: 300 }}>
         {loading && (
-          <div style={overlay}>
-            <div style={spinner} />
-            <span style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}>Loading chart…</span>
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--surface)" }}>
+            <div style={{ width: 28, height: 28, border: "2px solid var(--border-2)", borderTop: "2px solid var(--accent)", borderRadius: "50%", animation: "spin 0.8s linear infinite", marginBottom: 12 }} />
+            <span style={{ fontSize: 12, color: "var(--text-3)" }}>Loading chart…</span>
           </div>
         )}
         {error && !loading && (
-          <div style={{ ...overlay, background: "var(--surface-2)" }}>
-            <div style={{ fontSize: 24, marginBottom: 8 }}>📈</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", maxWidth: 280, lineHeight: 1.6 }}>
-              Chart data unavailable<br />{error}
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--surface)", gap: 10 }}>
+            <div style={{ fontSize: 36 }}>📉</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", textAlign: "center", maxWidth: 300, lineHeight: 1.7 }}>
+              Historical data unavailable<br /><span style={{ fontSize: 11, opacity: 0.7 }}>{error}</span>
             </div>
           </div>
         )}
-        <div ref={containerRef} style={{ width: "100%", opacity: loading ? 0 : 1, transition: "opacity 0.2s" }} />
-      </div>
-
-      <div style={{ fontSize: 10, color: "var(--muted-2)", marginTop: 6, textAlign: "right" }}>
-        Powered by Pyth Network · {RANGE_CONFIG[range].resolution === "D" ? "Daily" : `${RANGE_CONFIG[range].resolution}m`} candles
+        <div ref={containerRef} style={{ width: "100%", opacity: loading ? 0 : 1, transition: "opacity 0.25s" }} />
       </div>
     </div>
   );
 }
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const wrapper: React.CSSProperties = {
-  background:   "var(--surface)",
-  border:       "1px solid var(--border)",
-  borderRadius: "var(--radius-lg)",
-  padding:      "16px 18px 12px",
-  marginBottom: 20,
-  boxShadow:    "var(--shadow-sm)",
-};
-
-const headerRow: React.CSSProperties = {
-  display:        "flex",
-  justifyContent: "space-between",
-  alignItems:     "center",
-  marginBottom:   14,
-  flexWrap:       "wrap",
-  gap:            8,
-};
-
-const rangeRow: React.CSSProperties = {
-  display: "flex",
-  gap:     4,
-};
-
-const baseBtn: React.CSSProperties = {
-  fontSize:     11,
-  fontWeight:   600,
-  padding:      "4px 10px",
-  border:       "1px solid var(--border)",
-  borderRadius: 20,
-  cursor:       "pointer",
-  transition:   "all 0.15s",
-  fontFamily:   "inherit",
-};
-
-const rangeBtn: React.CSSProperties = {
-  ...baseBtn,
-  background: "transparent",
-  color:      "var(--muted)",
-};
-
-const activeRangeBtn: React.CSSProperties = {
-  ...baseBtn,
-  background:  "var(--accent-light)",
-  color:       "var(--accent-dark)",
-  borderColor: "var(--accent)",
-};
-
-const overlay: React.CSSProperties = {
-  position:       "absolute",
-  inset:          0,
-  display:        "flex",
-  flexDirection:  "column",
-  alignItems:     "center",
-  justifyContent: "center",
-  minHeight:      280,
-  background:     "var(--surface)",
-};
-
-const spinner: React.CSSProperties = {
-  width:        24,
-  height:       24,
-  border:       "2px solid var(--border)",
-  borderTop:    "2px solid var(--accent)",
-  borderRadius: "50%",
-  animation:    "spin 0.8s linear infinite",
-};
