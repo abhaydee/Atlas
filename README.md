@@ -1,8 +1,8 @@
 # Atlas — The Next Generation of Permissionless Commodities & RWA Trading
 
-**Trade synthetic Gold, Silver, Bitcoin, Oil, and any real-world asset — long or short — with on-chain AI agents that keep markets liquid and fair, 24/7.**
+**Trade synthetic Gold, Silver, Bitcoin, Oil, and any real-world asset — long or short — with autonomous on-chain AI agents that keep markets liquid and fair, 24/7, no human in the loop.**
 
-Atlas is the **permissionless synthetic markets protocol** for real-world assets (RWA). No gatekeepers. No custodians. Just AI-powered liquidity, Pyth-powered prices, and fully backed collateral — the way commodities and RWA trading was meant to be.
+Atlas is the **permissionless synthetic markets protocol** for real-world assets (RWA). No gatekeepers. No custodians. AI agents run the show: liquidity, arbitrage, and market health — Pyth-powered prices and fully backed collateral. The way commodities and RWA trading was meant to be.
 
 ---
 
@@ -10,9 +10,9 @@ Atlas is the **permissionless synthetic markets protocol** for real-world assets
 
 - **Permissionless** — Anyone can create a market. No approval process. Deploy a new synthetic asset in one click.
 - **100% collateralized** — Every synth is backed by USDC in the vault. Transparent, verifiable, and always redeemable.
-- **AI-native** — Autonomous agents research oracles, pay fees, deploy contracts, and keep AMM pools liquid. No wallet popups for market creation.
+- **AI-native** — Autonomous agents research oracles, pay fees, deploy contracts, and keep AMM pools liquid. Zero wallet popups; zero human steps for market creation.
 - **Priced by Pyth** — Sub-second oracle prices from Pyth Network. Trade with confidence.
-- **24/7 markets** — On-chain AI agents provide liquidity and arbitrage around the clock. Markets never sleep.
+- **24/7 markets** — On-chain AI agents (Market Maker + Arbitrageur) provide liquidity and arbitrage around the clock. No human operators. Markets never sleep.
 
 ---
 
@@ -22,7 +22,7 @@ Atlas is the **permissionless synthetic markets protocol** for real-world assets
 
 ![Atlas Landing](docs/screenshots/01-landing.png)
 
-*Atlas [Synthetic Markets] — Powered by AI · Priced by Pyth. Live on testnet.*
+*Atlas [Truly permissionless markets] — Powered by AI · Priced by Pyth. Live on testnet.*
 
 ---
 
@@ -30,7 +30,7 @@ Atlas is the **permissionless synthetic markets protocol** for real-world assets
 
 ![Atlas Hero](docs/screenshots/02-landing-hero.png)
 
-*Trade synthetic Gold, Bitcoin, Oil, and any real-world asset — long or short — with on-chain AI agents that keep markets liquid and fair, 24/7.*
+*Trade synthetic Gold, Bitcoin, Oil, and any real-world asset — long or short — with autonomous on-chain AI agents that keep markets liquid and fair, 24/7, no human required.*
 
 ---
 
@@ -38,7 +38,7 @@ Atlas is the **permissionless synthetic markets protocol** for real-world assets
 
 ![Tutorial Welcome](docs/screenshots/03-tutorial-welcome.png)
 
-*Atlas lets you trade synthetic versions of real-world assets without owning the underlying. Every market is powered by Pyth oracles, AI agents for liquidity, and an on-chain AMM.*
+*Atlas lets you trade synthetic versions of real-world assets without owning the underlying. Every market is powered by Pyth oracles, autonomous AI agents for 24/7 liquidity and arbitrage, and an on-chain AMM.*
 
 ---
 
@@ -82,11 +82,23 @@ Pyth / Switchboard-compatible Oracle
 
 | Layer | Description |
 |-------|-------------|
-| **Agent Wallet** | Signs x402 payments and deploys contracts autonomously — no MetaMask needed for market creation |
+| **Agent Wallet** | AI agent signs x402 payments and deploys contracts — fully autonomous, no MetaMask or human for market creation |
 | **x402 Layer** | EIP-3009 `transferWithAuthorization` → direct on-chain settlement |
 | **Backend API** | Express + SSE; job-based pipeline with real-time progress streaming |
 | **Smart Contracts** | OracleAggregator, SyntheticToken, OracleReader, SyntheticVault, SynthPool on testnet |
 | **Frontend** | React + Vite; agent identity, live progress, payment proof, chat-to-trade assistant |
+
+### Deployed contracts (testnet)
+
+Final smart contract addresses on testnet:
+
+| Contract | Address |
+|----------|---------|
+| OracleAggregator | `0x789219Abc1c4F245d6DbF7E3262a07D529f524C4` |
+| OracleReader | `0xDA0F3b27758ED0666fAAA775c16277DEcEf2F8dE` |
+| SyntheticToken (sGOLD) | `0x7099E62F898b2482Eb24b4c5db1CdF8097903317` |
+| SyntheticVault | `0x3CF009CE9F3a179b60C5b4fd9Bba581A2DAF9701` |
+| SynthPool | `0xD4A99fA8e8b8B8D8321bde1ff820Bf5a904401f4` |
 
 ---
 
@@ -253,4 +265,4 @@ Key variables:
 
 ---
 
-**Atlas — Permissionless commodities and RWA trading. Powered by AI. Priced by Pyth. Live on testnet.**
+**Atlas — Permissionless commodities and RWA trading. Autonomous AI agents. Priced by Pyth. Live on testnet.**

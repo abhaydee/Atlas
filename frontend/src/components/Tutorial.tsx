@@ -1,6 +1,6 @@
 /**
  * Tutorial — Full-screen step-by-step interactive guide.
- * Explains every feature of the Atlas Synthetic Markets platform.
+ * Explains every feature of the Atlas — Truly permissionless markets platform.
  * Rendered as a fixed overlay; can be opened from landing or from the nav.
  */
 
@@ -84,7 +84,7 @@ const STEPS: Step[] = [
     title: "Welcome to Atlas",
     body: [
       "Atlas lets you trade synthetic versions of real-world assets — Gold, Bitcoin, Silver, Oil — without owning the underlying asset.",
-      "Every market is powered by Pyth Network oracles for live prices, AI agents for automated liquidity, and an on-chain AMM pool for trading.",
+      "Every market is powered by Pyth oracles, autonomous AI agents for 24/7 liquidity and arbitrage, and an on-chain AMM — no human operators.",
       "You can go long or short, provide liquidity to earn fees, or just chat to the assistant and it handles everything.",
     ],
     visual: (
@@ -99,7 +99,7 @@ const STEPS: Step[] = [
         </FlowRow>
         <FlowArrow />
         <FlowRow>
-          <FlowBox label="AI Agents" sub="24/7 autonomous" color="var(--gold)" icon="🤖" />
+          <FlowBox label="AI Agents" sub="24/7 · no human in the loop" color="var(--gold)" icon="🤖" />
           <FlowArrowH />
           <FlowBox label="You" sub="Profit 🎉" color="var(--text)" icon="👤" />
         </FlowRow>
@@ -271,7 +271,7 @@ const STEPS: Step[] = [
     tagColor: "var(--gold)",
     title: "Autonomous AI Agents",
     body: [
-      "Two bots run 24/7 in the background using the deployer wallet — no MetaMask needed, no human required.",
+      "Autonomous AI agents run 24/7 in the background — Market Maker and Arbitrageur. No MetaMask, no human. Markets stay liquid and efficient.",
       "Market Maker (🏦): Seeds the AMM pool with initial USDC + synth liquidity every 5 minutes, so trading is always possible.",
       "Arbitrageur (⚡): Every 2 minutes, compares oracle price vs AMM price. If the gap exceeds 0.5%, it buys or sells to push them back together — keeping markets honest.",
     ],
@@ -358,7 +358,7 @@ const STEPS: Step[] = [
     title: "You're ready to trade!",
     body: [
       "Connect your wallet to start. You'll need testnet USDC — grab some free from faucet.gokite.ai.",
-      "Browse existing markets on the dashboard, or create a brand-new synthetic market in under 3 minutes using the AI agent.",
+      "Browse live markets or create a new one in minutes — the AI agent researches oracles, pays fees, and deploys everything. You just click once.",
       "The chatbot is always there at the bottom-right — just type what you want.",
     ],
     visual: (

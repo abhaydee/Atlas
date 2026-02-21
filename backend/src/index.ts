@@ -1179,7 +1179,7 @@ setTimeout(async () => {
 app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
-║  Atlas Synthetic Markets — AI Agent Backend              ║
+║  Atlas — Truly permissionless markets · AI Agent Backend  ║
 ║  http://localhost:${PORT}                                   ║
 ╠═══════════════════════════════════════════════════════════╣
 ║  GET  /markets               (all live markets)          ║

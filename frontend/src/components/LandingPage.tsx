@@ -45,7 +45,7 @@ const FEATURES = [
     tagBg: "var(--gold-dim)",
     tagBorder: "var(--gold-border)",
     title: "Autonomous Markets",
-    desc: "Two AI agents run 24/7: a Market Maker that seeds AMM liquidity, and an Arbitrageur that closes oracle-AMM price gaps — keeping every market healthy.",
+    desc: "Autonomous AI agents run 24/7 with no human in the loop: Market Makers seed liquidity, Arbitrageurs close oracle–AMM gaps. Every market stays deep, tight, and fair.",
     pills: ["Market Maker", "Arbitrageur", "Always on", "No MetaMask"],
     glowColor: "rgba(245,158,11,0.10)",
     borderGlow: "rgba(245,158,11,0.22)",
@@ -69,7 +69,7 @@ const HOW_IT_WORKS = [
     n: "03",
     icon: "🔮",
     title: "Prices Update Live",
-    desc: "Pyth Network oracle prices update every 10 seconds. AI agents arbitrage any deviation between the pool price and oracle.",
+    desc: "Pyth sub-second prices. AI agents constantly arbitrage pool vs oracle — keeping spreads minimal and markets efficient, 24/7.",
   },
   {
     n: "04",
@@ -285,7 +285,7 @@ export function LandingPage({ onEnter, onTutorial }: Props) {
             <AtlasDiamond size={28} />
             <div>
               <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.4px", lineHeight: 1 }}>
-                Atlas <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: 13 }}>[ Synthetic Markets ]</span>
+                Atlas <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: 13 }}>[ Truly permissionless markets ]</span>
               </div>
               <div style={{ fontSize: 10, color: "var(--text-4)", letterSpacing: "0.3px" }}>
                 Pyth Oracles · x402 Protocol · Testnet
@@ -372,7 +372,7 @@ export function LandingPage({ onEnter, onTutorial }: Props) {
             <span className="gradient-text">Atlas</span>
             <br />
             <span style={{ color: "var(--text)", fontWeight: 800, fontSize: "0.5em", letterSpacing: "-1.5px" }}>
-              Synthetic Markets
+              Truly permissionless markets
             </span>
             <br />
             <span style={{ color: "var(--text-3)", fontWeight: 700, fontSize: "0.45em", letterSpacing: "-1px" }}>
@@ -391,8 +391,8 @@ export function LandingPage({ onEnter, onTutorial }: Props) {
             fontWeight: 400,
           }}>
             Trade synthetic Gold, Bitcoin, Oil, and any real-world asset — long or short —
-            with on-chain AI agents that keep markets liquid and fair,{" "}
-            <span style={{ color: "var(--accent)", fontWeight: 600 }}>24/7.</span>
+            with <strong>autonomous on-chain AI agents</strong> that keep markets liquid, tight, and fair —{" "}
+            <span style={{ color: "var(--accent)", fontWeight: 600 }}>24/7, no human required.</span>
           </p>
 
           {/* CTAs */}
@@ -728,7 +728,7 @@ export function LandingPage({ onEnter, onTutorial }: Props) {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <AtlasDiamond size={18} />
             <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)" }}>
-              Atlas Synthetic Markets
+              Atlas — Truly permissionless markets
             </span>
             <span style={{ fontSize: 11, color: "var(--text-4)" }}>— Testnet</span>
           </div>

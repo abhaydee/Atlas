@@ -232,7 +232,7 @@ export function MarketsDashboard({ backendUrl, onSelect, onCreateNew }: {
           <div style={{ fontSize: 52, marginBottom: 16, filter: "grayscale(0.3)" }}>◈</div>
           <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>No markets yet</div>
           <div style={{ fontSize: 13, color: "var(--text-3)", maxWidth: 380, margin: "0 auto 24px", lineHeight: 1.7 }}>
-            Deploy the first synthetic market — the AI agent handles Pyth oracle research, x402 payment, and contract deployment autonomously.
+            Deploy the first market — an AI agent handles Pyth research, x402 payment, and full contract deployment. Zero clicks from you.
           </div>
           <button onClick={onCreateNew} className="btn btn-primary" style={{ borderRadius: "var(--radius)", padding: "12px 24px" }}>
             Create First Market

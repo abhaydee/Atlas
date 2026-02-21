@@ -563,7 +563,7 @@ export default function App() {
             <div>
               <div style={{ fontSize: 17, fontWeight: 900, color: "var(--text)", letterSpacing: "-0.5px", lineHeight: 1 }}>
                 Atlas{" "}
-                <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: 14 }}>[ Synthetic Markets ]</span>
+                <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: 14 }}>[ Truly permissionless markets ]</span>
               </div>
               <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2, fontWeight: 500, letterSpacing: "0.3px" }}>
                 Pyth Oracles · x402 Protocol · Testnet
@@ -643,7 +643,7 @@ export default function App() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", display: "inline-block", boxShadow: "0 0 6px var(--accent)", animation: "glow-pulse 2s infinite" }} />
-                    AI agents are trading autonomously below ↓
+                    Autonomous AI agents are trading 24/7 below — no human in the loop ↓
                   </div>
                 </div>
               )}
@@ -698,6 +698,9 @@ export default function App() {
                   onOperationRecord={(op) => recordOperation(selectedMarket.id, op)}
                 />
               </div>
+              <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8, marginBottom: 0 }}>
+                Mints and redeems show in <strong style={{ color: "var(--text-2)" }}>Recent activity</strong> above.
+              </p>
 
               {/* AI Agent Console */}
               <AgentConsole
@@ -800,8 +803,7 @@ export default function App() {
                 Create <span style={{ color: "var(--accent)" }}>[ Synthetic Market ]</span>
               </div>
               <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.7, margin: 0 }}>
-                The autonomous agent pays the x402 fee, researches Pyth oracle feeds,
-                and deploys all contracts on testnet — fully autonomous, no wallet needed.
+                An AI agent pays the fee, discovers Pyth feeds, and deploys every contract — fully autonomous. You don’t sign a thing.
               </p>
             </div>
 
@@ -863,7 +865,7 @@ export default function App() {
                 <Field label={`Agent Fee (${x402TokenLabel})`} type="number" min="0" value={createForm.totalPayment} onChange={(v) => setCreateForm((f) => ({ ...f, totalPayment: v }))} hint="Paid autonomously via x402 — no wallet confirmation required" />
 
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", background: "var(--green-dim)", border: "1px solid var(--green-border)", borderRadius: "var(--radius)", marginBottom: 16, fontSize: 12, color: "var(--green)", fontWeight: 600 }}>
-                  <span>🤖</span> Agent pays autonomously via x402 — you don&apos;t sign anything
+                  <span>🤖</span> AI agent pays via x402 — 100% autonomous, you never sign
                 </div>
 
                 <button type="submit" className="btn btn-primary" style={{ width: "100%", borderRadius: "var(--radius)", padding: "13px", fontSize: 15, fontWeight: 800 }}>

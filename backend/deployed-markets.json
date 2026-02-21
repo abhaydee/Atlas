@@ -1,12 +1,12 @@
 [
   {
-    "syntheticToken": "0xe2dF73013AB944519541b5C360D450c315d24cCe",
-    "oracleReader": "0x5799D8Fe964eE357244851dE39Cf92CB64001478",
-    "syntheticVault": "0x7a395B5FBFde0f3214abf1F6237de60fBE90780a",
-    "oracleAggregator": "0x0C9Fdd1d8DBf90Af0638a0999aD82524Fb2580b1",
+    "syntheticToken": "0xD2601cfEe22379Bf3402eeAA83A6aeaaa3540e31",
+    "oracleReader": "0xB33F27eBbBAaC2D4628F64c41F5E935737E5Cdfd",
+    "syntheticVault": "0x8c25124C523E11D4c19f12F94107870dC0343451",
+    "oracleAggregator": "0x117B11219828Cf3903A2D723D9e92c2E1a572759",
     "mockOracle": null,
-    "usdc": "0xAb0f1f4F2c7b9acBE4871b822B1151eD1aA444e4",
-    "synthPool": "0xc3Eba0F806B0195F63Be30C4034Faa6A4cEa81ce",
+    "usdc": "0x337B148581c07674016aEDF5f90B845f88C9504C",
+    "synthPool": "0xC08364a715E80c295BD8efE327Fb1d47026B7abe",
     "assetName": "Silver",
     "assetSymbol": "sXAG",
     "research": {
@@ -26,6 +26,6 @@
       "recommendedFee": "0.5%",
       "summary": "Fallback research for Silver (OPENROUTER_API_KEY not set). Using Pyth Network — XAG/USD (Silver Spot) as price feed. Set OPENROUTER_API_KEY for AI-discovered sources."
     },
-    "deployedAt": "2026-02-21T13:01:57.156Z"
+    "deployedAt": "2026-02-21T14:13:31.750Z"
   }
 ]
