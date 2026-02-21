@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment files (keep examples, ignore actuals)
+.env
+backend/.env
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# Build outputs
+dist/
+**/dist/
+build/
+**/build/
+
+# Contract artifacts & cache
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+
+# Hardhat
+contracts/.openzeppelin/
+
+# TypeScript
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+*.swp

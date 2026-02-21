@@ -1,0 +1,29 @@
+{
+  "syntheticToken": "0x466DC3982Ac49868ccCA11F5307b3611D3222d41",
+  "oracleReader": "0x24ef0e770191b82823eEadCA91A3388E83E260Fe",
+  "syntheticVault": "0x19874190C5f97D23C7BFF322580643eA68db8eDB",
+  "oracleAggregator": "0x377faF17d3c3A1064594E958b7Fa118e2ae8A24c",
+  "mockOracle": null,
+  "usdc": "0x0fF5393387ad2f9f691FD6Fd28e07E3969e27e63",
+  "synthPool": "0x83Ea1F46572950c08f017d6530E8BC53195D2923",
+  "assetName": "Gold",
+  "assetSymbol": "sGLD",
+  "research": {
+    "assetClass": "Gold",
+    "dataSources": [
+      {
+        "name": "CoinGecko — Pax Gold (PAXG/USD)",
+        "type": "aggregator",
+        "updateFrequency": "1 minute",
+        "reliability": "high",
+        "url": "https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd",
+        "jsonPath": "$.pax-gold.usd"
+      }
+    ],
+    "suggestedFeedName": "GOLD/USD",
+    "volatilityEstimate": "2% daily",
+    "recommendedFee": "0.5%",
+    "summary": "Fallback research for Gold (OPENROUTER_API_KEY not set). Using CoinGecko — Pax Gold (PAXG/USD) as price feed. Set OPENROUTER_API_KEY for AI-discovered sources."
+  },
+  "deployedAt": "2026-02-21T02:38:23.531Z"
+}

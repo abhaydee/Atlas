@@ -1,0 +1,89 @@
+[
+  {
+    "syntheticToken": "0x47967FbD2a527C248122b80891B0E4388158F24B",
+    "oracleReader": "0x7D50526A99082Dd585fEFE7dB09a66d6F67fca6f",
+    "syntheticVault": "0x3B539571bF73EF8D38031F1fb2A79bb8de9E9128",
+    "oracleAggregator": "0x682F273FB82CbBff89e0271d924db5F7Ec798C81",
+    "mockOracle": null,
+    "usdc": "0x0fF5393387ad2f9f691FD6Fd28e07E3969e27e63",
+    "synthPool": "0xcB0619d52433f9DAf248D1aa2Bc4805688a1301A",
+    "assetName": "Silver",
+    "assetSymbol": "sXAG",
+    "research": {
+      "assetClass": "Silver",
+      "dataSources": [
+        {
+          "name": "CoinGecko — Silver (XAUT proxy)",
+          "type": "aggregator",
+          "updateFrequency": "1 minute",
+          "reliability": "medium",
+          "url": "https://api.coingecko.com/api/v3/simple/price?ids=tether-gold&vs_currencies=usd",
+          "jsonPath": "$.tether-gold.usd"
+        }
+      ],
+      "suggestedFeedName": "SILVER/USD",
+      "volatilityEstimate": "2% daily",
+      "recommendedFee": "0.5%",
+      "summary": "Fallback research for Silver (OPENROUTER_API_KEY not set). Using CoinGecko — Silver (XAUT proxy) as price feed. Set OPENROUTER_API_KEY for AI-discovered sources."
+    },
+    "deployedAt": "2026-02-21T02:53:20.807Z"
+  },
+  {
+    "syntheticToken": "0x59F95ef273517B71B387CA2F5CF21a1588eD4efE",
+    "oracleReader": "0xcd24df337c8f8217bCc956e00C16dB3EccB61213",
+    "syntheticVault": "0x81b5bEF5Fd0ED9edB80724E82D7781990Ae85FF6",
+    "oracleAggregator": "0x81aA66eC90108E48ED8da39c2Dab3Fde039EDBE8",
+    "mockOracle": null,
+    "usdc": "0x0fF5393387ad2f9f691FD6Fd28e07E3969e27e63",
+    "synthPool": "0x2DcF7375cbf34A356778dFCB82fDE2732bFF8Ac5",
+    "assetName": "RUBY",
+    "assetSymbol": "xRUBY",
+    "research": {
+      "assetClass": "RUBY",
+      "dataSources": [
+        {
+          "name": "Pyth Network — RUBY (dynamic feed lookup)",
+          "type": "pyth",
+          "updateFrequency": "400ms",
+          "reliability": "medium",
+          "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
+          "jsonPath": "$.bitcoin.usd"
+        }
+      ],
+      "suggestedFeedName": "RUBY/USD",
+      "volatilityEstimate": "2% daily",
+      "recommendedFee": "0.5%",
+      "summary": "Fallback research for RUBY (OPENROUTER_API_KEY not set). Using Pyth Network — RUBY (dynamic feed lookup) as price feed. Set OPENROUTER_API_KEY for AI-discovered sources."
+    },
+    "deployedAt": "2026-02-21T03:17:42.352Z"
+  },
+  {
+    "syntheticToken": "0x44Abb714FfD1e0450ecbd943e0AAa18254a0cB78",
+    "oracleReader": "0x111D2C2fa4FE5C128BFD9b3eF8c89Aac91F6D5e7",
+    "syntheticVault": "0xc70E4E78894b75E6CD7c54C76F9BC5C839d8810d",
+    "oracleAggregator": "0x4FcE84ab1A7f6E317e00603BE9058e54dBd00969",
+    "mockOracle": null,
+    "usdc": "0x0fF5393387ad2f9f691FD6Fd28e07E3969e27e63",
+    "synthPool": "0xE4ffaF4A20C8E25c7135e7553c31916A1b7C5862",
+    "assetName": "oil",
+    "assetSymbol": "xOIL",
+    "research": {
+      "assetClass": "oil",
+      "dataSources": [
+        {
+          "name": "Pyth Network — WTI Crude Oil",
+          "type": "pyth",
+          "updateFrequency": "400ms",
+          "reliability": "high",
+          "pythFeedId": "0058c6f03fd28b18083d00fcdc3baaed2f11edef8b981f6b74130b85be474b17",
+          "pythSymbol": "WTI/USD"
+        }
+      ],
+      "suggestedFeedName": "OIL/USD",
+      "volatilityEstimate": "2% daily",
+      "recommendedFee": "0.5%",
+      "summary": "Fallback research for oil (OPENROUTER_API_KEY not set). Using Pyth Network — WTI Crude Oil as price feed. Set OPENROUTER_API_KEY for AI-discovered sources."
+    },
+    "deployedAt": "2026-02-21T03:25:32.076Z"
+  }
+]

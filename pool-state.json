@@ -1,0 +1,15 @@
+{
+  "reserveA": 10099.7,
+  "reserveB": 9901.284196560293,
+  "totalLiquidity": 10000,
+  "feeRate": 0.003,
+  "tokenA": "KITE",
+  "tokenB": "USDT",
+  "swapCount": 1,
+  "volumeA": 100,
+  "volumeB": 0,
+  "feesCollectedA": 0.3,
+  "feesCollectedB": 0,
+  "createdAt": "2026-02-20T18:34:24.610Z",
+  "lastUpdated": "2026-02-20T18:34:38.597Z"
+}
