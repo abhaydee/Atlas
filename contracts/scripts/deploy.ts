@@ -31,12 +31,25 @@ async function main() {
   console.log("Deployer:", deployerAddress);
   console.log("Network :", hre.network.name);
 
-  const usdcAddress       = process.env.USDC_ADDRESS || "";
+  let usdcAddress         = process.env.USDC_ADDRESS || "";
+  const useMockUsdc      = process.env.USE_MOCK_USDC === "true";
   const switchboardFeed   = process.env.SWITCHBOARD_FEED_ADDRESS || "";
   const assetName         = process.env.ASSET_NAME   || "Synthetic MOTO";
   const assetSymbol       = process.env.ASSET_SYMBOL || "sMOTO";
 
-  if (!usdcAddress) throw new Error("USDC_ADDRESS not set in backend/.env");
+  if (!usdcAddress && !useMockUsdc) throw new Error("Set USDC_ADDRESS in backend/.env or USE_MOCK_USDC=true");
+
+  // ── 0. Optional: deploy MockUSDC and mint to deployer ──────────────────────
+  if (useMockUsdc) {
+    console.log("Deploying MockUSDC (mintable, 6 decimals) ...");
+    const MockUSDC = await ethers.getContractFactory("MockUSDC");
+    const mockUsdc = await MockUSDC.deploy(deployerAddress);
+    await mockUsdc.waitForDeployment();
+    usdcAddress = await mockUsdc.getAddress();
+    const mintTx = await mockUsdc.mint(deployerAddress, 1_000_000n * 10n ** 6n);
+    await mintTx.wait();
+    console.log("MockUSDC deployed:", usdcAddress, "— minted 1,000,000 to deployer");
+  }
 
   // ── 1. Oracle ──────────────────────────────────────────────────────────────
   let oracleAddress: string;

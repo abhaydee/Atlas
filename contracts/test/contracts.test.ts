@@ -418,7 +418,7 @@ describe("SynthPool", () => {
         pool = await PoolFactory.deploy(
             await usdc.getAddress(),
             await synth.getAddress(),
-            "Kite LP sBTC/USDC",
+            "Atlas LP sBTC/USDC",
             "KLP-sBTC"
         );
 

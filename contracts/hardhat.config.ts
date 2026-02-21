@@ -21,7 +21,7 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
-    // Kite L1 Testnet
+    // Testnet
     kiteTestnet: {
       url: RPC_URL,
       chainId: CHAIN_ID,
